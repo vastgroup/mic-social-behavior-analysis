@@ -140,8 +140,8 @@ TRACKING_STATE_COLUMNS = [
     "tracked",
     "valid_genotype_group",
     "valid_mean_id_probabilities",
-    "valid_num_impossible_speed_jumps",
     "valid_ratio_frames_tracked",
+    "valid_num_unsolvable_impossible_speed_jumps",
 ]
 
 ID_LAST_FISH_STATE_COLUMNS = [

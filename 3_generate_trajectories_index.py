@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from ast import arg
@@ -15,6 +16,7 @@ from constants import (
     TRACKING_DATA_FOLDER_PATH,
     TRAJECTORIES_INDEX_FILE_NAME,
 )
+from utils import clean_impossible_speed_jumps
 
 
 def info_from_video_path(
@@ -142,7 +144,7 @@ def info_from_trajectories(trajectories):
     trajectories_info = {}
     trajectories_info["number_of_frames"] = trajectories.shape[0]
     trajectories_info["number_of_animals"] = trajectories.shape[1]
-    trajectory_info.update(get_info_tracked_fish(trajectories))
+    trajectories_info.update(get_info_tracked_fish(trajectories))
     if trajectories_info["number_of_animals"] == 2:
         trajectories_info.update(get_info_id_last_animal(trajectories))
     return trajectories_info
@@ -201,6 +203,13 @@ def get_info_from_params_json(params_json_path):
     return json_dict
 
 
+def get_unsolvable_impossible_speed_jumps(tr_dict, tracking_interval):
+    _, num_unsolvable_impossible_jumps = clean_impossible_speed_jumps(
+        tr_dict, tracking_interval, num_vels=2
+    )
+    return {"num_unsolvable_impossible_jumps": num_unsolvable_impossible_jumps}
+
+
 def get_info_from_trajectory_object(tr):
 
     trajectory_object_info = {
@@ -247,6 +256,12 @@ if __name__ == "__main__":
             ).item()
             trajectory_info.update(
                 get_info_from_trajectory_dict(trajectory_dict)
+            )
+            trajectory_info.update(
+                get_unsolvable_impossible_speed_jumps(
+                    copy.deepcopy(trajectory_dict),
+                    [0, NUM_FRAMES_FOR_ANALYSIS],
+                )
             )
             trajectory_info["trial_uid"] = (
                 trajectory_info["folder_name_track"]

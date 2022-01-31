@@ -1,4 +1,5 @@
 import argparse
+import copy
 import os
 import time
 from typing import List
@@ -21,49 +22,13 @@ from constants import (
     TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH,
     VIDEOS_INDEX_FILE_NAME,
 )
+from utils import clean_impossible_speed_jumps
 
 
 def _speed(trajectories):
     vel = np.diff(trajectories, axis=0)
     speed = np.sqrt(vel[..., 0] ** 2 + vel[..., 1] ** 2)
     return speed
-
-
-def _clean_impossible_speed_jumps(tr_dict, tracking_interval):
-    trajectories = tr_dict["trajectories"][
-        tracking_interval[0] : tracking_interval[1]
-    ]
-    
-    trajectories_interpolated = trajectories.copy()
-    tt.interpolate_nans(trajectories_interpolated)
-    speed = _speed(trajectories_interpolated)
-    typical_max_speed = np.nanpercentile(speed, 99)
-    bad_speeds = np.where(speed > 2 * typical_max_speed)
-    print(bad_speeds[0])
-    trajectories[bad_speeds[0], bad_speeds[1]] = np.nan
-    trajectories[bad_speeds[0]-1, bad_speeds[1]] = np.nan
-    trajectories[bad_speeds[0]+1, bad_speeds[1]] = np.nan
-
-    trajectories_interpolated = trajectories.copy()
-    tt.interpolate_nans(trajectories_interpolated)
-    speed_clean = _speed(trajectories_interpolated)
-    try:
-        print(len((speed_clean > 2 * typical_max_speed)[0]))
-        assert len(np.where(speed_clean > 2 * typical_max_speed)[0]) == 0, np.where(
-            speed_clean > 2 * typical_max_speed
-        )[0]
-    except:
-        import matplotlib.pyplot as plt
-
-        fig, axs = plt.subplots(2, 1, sharex='all', sharey='all')
-        axs[0].plot(speed, alpha=0.5)
-        axs[0].axhline(2 * typical_max_speed, c="k")
-        axs[1].plot(speed_clean, alpha=0.5)
-        axs[1].axhline(2 * typical_max_speed, c="k")
-        plt.show()
-
-    tr_dict["trajectories"] = trajectories
-    return tr_dict
 
 
 def get_trajectories(
@@ -77,7 +42,7 @@ def get_trajectories(
 ):
     tr_dict = np.load(trajectories_path, allow_pickle=True).item()
 
-    tr_dict = _clean_impossible_speed_jumps(tr_dict, tracking_interval)
+    tr_dict, _ = clean_impossible_speed_jumps(tr_dict, tracking_interval)
 
     tr = tt.trajectories.FishTrajectories.from_idtracker_(
         tr_dict,

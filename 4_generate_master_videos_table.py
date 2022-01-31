@@ -4,25 +4,16 @@ import os
 import numpy as np
 import pandas as pd
 
-from constants import (
-    ANIMALS_COUNT_FILE_PATH,
-    ANIMALS_INDEX_FILE_PATH,
-    GENERATED_TABLES_PATH,
-    ID_LAST_FISH_STATE_COLUMNS,
-    NO_ID_LAST_FISH_FILL_VALUE,
-    PER_VIDEO_COLUMNS,
-    THRESHOLD_ACCURACY,
-    THRESHOLD_CERTAINTY_ID_LAST_FISH,
-    THRESHOLD_MEAN_ID_PROBABILITIES,
-    THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS,
-    THRESHOLD_RATIO_TRACKED,
-    TRACKING_STATE_COLUMNS,
-    TRAJECTORIES_INDEX_FILE_NAME,
-    VALID_GENOTYPES,
-    VIDEOS_INDEX_FILE_NAME,
-    VIDEOS_TRACKING_STATE_FILE_NAME,
-    VIDEOS_VALID_FOR_ANALYSIS_FILE_PATH,
-)
+from constants import (ANIMALS_COUNT_FILE_PATH, ANIMALS_INDEX_FILE_PATH,
+                       GENERATED_TABLES_PATH, ID_LAST_FISH_STATE_COLUMNS,
+                       NO_ID_LAST_FISH_FILL_VALUE, PER_VIDEO_COLUMNS,
+                       THRESHOLD_ACCURACY, THRESHOLD_CERTAINTY_ID_LAST_FISH,
+                       THRESHOLD_MEAN_ID_PROBABILITIES,
+                       THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS,
+                       THRESHOLD_RATIO_TRACKED, TRACKING_STATE_COLUMNS,
+                       TRAJECTORIES_INDEX_FILE_NAME, VALID_GENOTYPES,
+                       VIDEOS_INDEX_FILE_NAME, VIDEOS_TRACKING_STATE_FILE_NAME,
+                       VIDEOS_VALID_FOR_ANALYSIS_FILE_PATH)
 
 
 def _add_manually_labeled_id_last_fish(videos_table, animals_table):
@@ -103,6 +94,9 @@ def _add_video_quality_state_columns(videos_table):
         videos_table["num_impossible_speed_jumps"]
         < THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS
     )
+    videos_table["valid_num_unsolvable_impossible_speed_jumps"] = (
+        videos_table["num_unsolvable_impossible_jumps"] == 0
+    )
     videos_table["valid_id_last_fish"] = videos_table["id_last_fish"] > 0
     videos_table["valid_certainty_id_last_fish"] = (
         videos_table["certainty_id_last_fish"]
@@ -120,6 +114,7 @@ def _add_video_quality_state_columns(videos_table):
     videos_table["valid_tracking"] = (
         videos_table.valid_mean_id_probabilities
         & videos_table.valid_ratio_frames_tracked
+        & videos_table.valid_num_unsolvable_impossible_speed_jumps
     )
     videos_table["valid_genotype_id"] = (
         videos_table.valid_id_last_fish
@@ -190,7 +185,7 @@ def get_tracking_state_table(videos_table):
 
 def print_summary_tracking_state(videos_table):
 
-    for column in TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS:
+    for column in TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS + ['valid_tracking', 'valid_for_analysis']:
 
         if column != "tracked":
             logger.info(f"\n*** Videos with {column}")
@@ -235,9 +230,9 @@ if __name__ == "__main__":
 
     logger = setup_logs("experiments_summary")
 
-    logger.info("Loading {ANIMALS_INDEX_FILE_PATH}")
+    logger.info(f"Loading {ANIMALS_INDEX_FILE_PATH}")
     animals_table = pd.read_csv(ANIMALS_INDEX_FILE_PATH)
-    logger.info("Loading {TRAJECTORIES_INDEX_FILE_NAME}")
+    logger.info(f"Loading {TRAJECTORIES_INDEX_FILE_NAME}")
     trajectories_table = pd.read_csv(TRAJECTORIES_INDEX_FILE_NAME)
 
     # A table for all experiments
@@ -294,7 +289,7 @@ if __name__ == "__main__":
             "folder_name_track",
             "ratio_frames_tracked",
             "estimated_accuracy",
-            "accuracy", # accuracy in animals_table
+            "accuracy",  # accuracy in animals_table
             "num_impossible_speed_jumps",
         ],
         ascending=True,
