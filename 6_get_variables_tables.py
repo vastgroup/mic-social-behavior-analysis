@@ -14,6 +14,7 @@ from trajectorytools.export import (
     INDIVIDUAL_VARIALBES,
     tr_variables_to_df,
 )
+from trajectorytools.export.variables import local_polarization
 
 from constants import (
     ANIMALS_INDEX_FILE_PATH,
@@ -23,6 +24,19 @@ from constants import (
     VIDEOS_INDEX_FILE_NAME,
 )
 from utils import clean_impossible_speed_jumps
+
+INDIVIDUAL_VARIALBES = [
+    var_
+    for var_ in INDIVIDUAL_VARIALBES
+    if var_["name"] != "local_polarization"
+]
+INDIVIDUAL_VARIALBES.append(
+    {
+        "name": "local_polarization",
+        "func": local_polarization,
+        "kwargs": {"number_of_neighbours": 1},
+    }
+)
 
 
 def _speed(trajectories):
@@ -105,7 +119,7 @@ if __name__ == "__main__":
                     },
                     tracking_interval=[0, NUM_FRAMES_FOR_ANALYSIS],
                 )
-                tr_indiv = tr_variables_to_df(tr, INDIVIDUAL_VARIALBES[:10])
+                tr_indiv = tr_variables_to_df(tr, INDIVIDUAL_VARIALBES)
                 tr_indiv["trial_uid"] = [tr_row.trial_uid] * len(tr_indiv)
                 tr_indivs.append(tr_indiv)
         tr_indivs = pd.concat(tr_indivs).reset_index()

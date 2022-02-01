@@ -4,16 +4,25 @@ import os
 import numpy as np
 import pandas as pd
 
-from constants import (ANIMALS_COUNT_FILE_PATH, ANIMALS_INDEX_FILE_PATH,
-                       GENERATED_TABLES_PATH, ID_LAST_FISH_STATE_COLUMNS,
-                       NO_ID_LAST_FISH_FILL_VALUE, PER_VIDEO_COLUMNS,
-                       THRESHOLD_ACCURACY, THRESHOLD_CERTAINTY_ID_LAST_FISH,
-                       THRESHOLD_MEAN_ID_PROBABILITIES,
-                       THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS,
-                       THRESHOLD_RATIO_TRACKED, TRACKING_STATE_COLUMNS,
-                       TRAJECTORIES_INDEX_FILE_NAME, VALID_GENOTYPES,
-                       VIDEOS_INDEX_FILE_NAME, VIDEOS_TRACKING_STATE_FILE_NAME,
-                       VIDEOS_VALID_FOR_ANALYSIS_FILE_PATH)
+from constants import (
+    ANIMALS_COUNT_FILE_PATH,
+    ANIMALS_INDEX_FILE_PATH,
+    GENERATED_TABLES_PATH,
+    ID_LAST_FISH_STATE_COLUMNS,
+    NO_ID_LAST_FISH_FILL_VALUE,
+    PER_VIDEO_COLUMNS,
+    THRESHOLD_ACCURACY,
+    THRESHOLD_CERTAINTY_ID_LAST_FISH,
+    THRESHOLD_MEAN_ID_PROBABILITIES,
+    THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS,
+    THRESHOLD_RATIO_TRACKED,
+    TRACKING_STATE_COLUMNS,
+    TRAJECTORIES_INDEX_FILE_NAME,
+    VALID_GENOTYPES,
+    VIDEOS_INDEX_FILE_NAME,
+    VIDEOS_TRACKING_STATE_FILE_NAME,
+    VIDEOS_VALID_FOR_ANALYSIS_FILE_PATH,
+)
 
 
 def _add_manually_labeled_id_last_fish(videos_table, animals_table):
@@ -174,6 +183,7 @@ def get_tracking_state_table(videos_table):
             "mean_id_probabilities",
             "ratio_impossible_speed_jumps",
             "num_impossible_speed_jumps",
+            "num_unsolvable_impossible_jumps",
             "id_last_fish",
             "manual_id_last_fish",
         ]
@@ -185,7 +195,11 @@ def get_tracking_state_table(videos_table):
 
 def print_summary_tracking_state(videos_table):
 
-    for column in TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS + ['valid_tracking', 'valid_for_analysis']:
+    for column in (
+        TRACKING_STATE_COLUMNS
+        + ID_LAST_FISH_STATE_COLUMNS
+        + ["valid_tracking", "valid_for_analysis"]
+    ):
 
         if column != "tracked":
             logger.info(f"\n*** Videos with {column}")
@@ -279,6 +293,7 @@ if __name__ == "__main__":
             "mean_id_probabilities",
             "ratio_impossible_speed_jumps",
             "num_impossible_speed_jumps",
+            "num_unsolvable_impossible_jumps",
             "id_last_fish",
             "manual_id_last_fish",
         ]
@@ -291,6 +306,7 @@ if __name__ == "__main__":
             "estimated_accuracy",
             "accuracy",  # accuracy in animals_table
             "num_impossible_speed_jumps",
+            "num_unsolvable_impossible_jumps",
         ],
         ascending=True,
     )

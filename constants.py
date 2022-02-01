@@ -49,6 +49,9 @@ VIDEOS_TRACKING_STATE_FILE_NAME = os.path.join(
 TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH = os.path.join(
     GENERATED_TABLES_PATH, "tr_indiv_vars.pkl"
 )
+TR_INDIV_VARS_BOXPLOTS_FILE_PATH = os.path.join(
+    GENERATED_FIGURES_PATH, "tr_indiv_vars_boxplots.pdf"
+)
 
 
 EXPECTED_COLUMNS_IN_SINGLE_ANIMALS_TABLE = {
@@ -107,6 +110,16 @@ VALID_GENOTYPES = [
     "WT_WT_WT_WT_WT",
     "DEL_DEL_DEL_DEL_DEL",
 ]
+
+GENOTYPE_GROUP_ORDER = [
+    "WT_WT",
+    "WT_HET",
+    "HET_HET",
+    "HET_DEL",
+    "DEL_DEL",
+    "WT_DEL",
+]
+GENOTYPE_ORDER = ["WT", "HET", "DEL"]
 
 PER_FISH_COLUMNS = [
     "fish_num",
