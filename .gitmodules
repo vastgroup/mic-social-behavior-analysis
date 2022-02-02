@@ -1,0 +1,3 @@
+[submodule "trajectorytools"]
+	path = trajectorytools
+	url = git@gitlab.com:polavieja_lab/trajectorytools.git
