@@ -1,3 +1,6 @@
 [submodule "trajectorytools"]
 	path = trajectorytools
 	url = git@gitlab.com:polavieja_lab/trajectorytools.git
+[submodule "bootstrap_stats"]
+	path = bootstrap_stats
+	url = git@gitlab.com:polavieja_lab/bootstrap_stats.git
