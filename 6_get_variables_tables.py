@@ -6,8 +6,17 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-import trajectorytools as tt
 from tqdm import tqdm
+
+import trajectorytools as tt
+from constants import (
+    ANIMALS_INDEX_FILE_PATH,
+    NUM_FRAMES_FOR_ANALYSIS,
+    TRACKING_DATA_FOLDER_PATH,
+    TRAJECTORIES_INDEX_FILE_NAME,
+    TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH,
+    VIDEOS_INDEX_FILE_NAME,
+)
 from trajectorytools.export import (
     GROUP_VARIABLES,
     INDIVIDUAL_NEIGHBOUR_VARIABLES,
@@ -15,14 +24,6 @@ from trajectorytools.export import (
     tr_variables_to_df,
 )
 from trajectorytools.export.variables import local_polarization
-
-from constants import (
-    ANIMALS_INDEX_FILE_PATH,
-    NUM_FRAMES_FOR_ANALYSIS,
-    TRACKING_DATA_FOLDER_PATH,
-    TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH,
-    VIDEOS_INDEX_FILE_NAME,
-)
 from utils import clean_impossible_speed_jumps
 
 INDIVIDUAL_VARIALBES = [
@@ -169,3 +170,29 @@ if __name__ == "__main__":
         tr_indivs.to_pickle(TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH)
     else:
         tr_indivs = pd.read_pickle(TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH)
+
+    trajectories_table = pd.read_csv(TRAJECTORIES_INDEX_FILE_NAME)
+    animals_table = pd.read_csv(ANIMALS_INDEX_FILE_PATH)
+
+    for idx, trajectory in trajectories_table.iterrows():
+        animals = animals_table[
+            animals_table.trial_uid == trajectory.trial_uid
+        ]
+        variables = tr_indivs[tr_indivs.trial_uid == trajectory.trial_uid]
+        if not variables.empty:
+            id_last_fish = trajectory.id_last_fish - 1
+            id_first_fish = 0 if id_last_fish == 1 else 1
+            genotype_last_fish = variables[
+                variables.identity == id_last_fish
+            ].genotype.unique()[0]
+            genotype_first_fish = variables[
+                variables.identity == id_first_fish
+            ].genotype.unique()[0]
+            genotype_last_fish_ = animals[
+                animals.fish_id_exp == 2
+            ].genotype.values[0]
+            genotype_first_fish_ = animals[
+                animals.fish_id_exp == 1
+            ].genotype.values[0]
+            assert genotype_first_fish == genotype_first_fish_
+            assert genotype_last_fish == genotype_last_fish_
