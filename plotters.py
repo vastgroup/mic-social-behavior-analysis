@@ -5,6 +5,8 @@ from permutation_stats import permutation_test
 
 from constants import GENOTYPE_GROUP_ORDER, GENOTYPE_ORDER
 
+colors = {"WT": "g", "HET": "b", "DEL": "r"}
+
 
 def _get_hue_offsets(width, hue_order):
     each_width = width / len(hue_order)
@@ -55,20 +57,28 @@ def _compute_groups_stats(
     test_kwargs,
 ):
     stats = []
-    for group_a, group_b in pairs_of_groups:
-        stat = {}
-        a = grouped_data.get_group(group_a)[variable].values
-        b = grouped_data.get_group(group_b)[variable].values
-        p_value, stat_value = test_func(a, b, **test_kwargs)
-        stat["test"] = test_func.__name__
-        stat["group_a"] = group_a
-        stat["group_b"] = group_b
-        stat["p_value"] = p_value
-        stat["value"] = stat_value
-        stat.update(
-            {f"test_kwarg_{key}": value for key, value in test_kwargs.items()}
-        )
-        stats.append(stat)
+    for pair_group in pairs_of_groups:
+        group_a, group_b = pair_group["pair"]
+        group_a_in_data = group_a in grouped_data.groups.keys()
+        group_b_in_data = group_b in grouped_data.groups.keys()
+        if group_a_in_data and group_b_in_data:
+            stat = {}
+            a = grouped_data.get_group(group_a)[variable].values
+            b = grouped_data.get_group(group_b)[variable].values
+            p_value, stat_value = test_func(a, b, **test_kwargs)
+            stat["test"] = test_func.__name__
+            stat["group_a"] = group_a
+            stat["group_b"] = group_b
+            stat["plot_level"] = pair_group["level"]
+            stat["p_value"] = p_value
+            stat["value"] = stat_value
+            stat.update(
+                {
+                    f"test_kwarg_{key}": value
+                    for key, value in test_kwargs.items()
+                }
+            )
+            stats.append(stat)
 
     return stats
 
@@ -87,6 +97,7 @@ def _boxplot_one_variable(ax, data, x_var, y_var, hue_var, order, hue_order):
         showmeans=True,
         meanline=True,
         meanprops=dict(linestyle="--", linewidth=1, color="k"),
+        palette=colors,
     )
     sns.stripplot(
         ax=ax,
@@ -98,6 +109,7 @@ def _boxplot_one_variable(ax, data, x_var, y_var, hue_var, order, hue_order):
         hue_order=hue_order,
         dodge=True,
         alpha=0.5,
+        palette=colors,
     )
     sns.despine(ax=ax)
     ax.set_xticklabels(order, rotation=45, ha="right")
@@ -154,7 +166,8 @@ def _plot_var_stat(
         hue_order,
         width,
     )
-    ax.plot([x_group_a, x_group_b], [y_line_stat] * 2, "k-")
+    alpha = 0.5 if var_stat["p_value"] > 0.05 else 1
+    ax.plot([x_group_a, x_group_b], [y_line_stat] * 2, "k-", alpha=alpha)
     x_text = np.mean([x_group_a, x_group_b])
     ax.text(
         x_text,
@@ -162,6 +175,7 @@ def _plot_var_stat(
         f"{var_stat['value']:.2f}, {var_stat['p_value']:.4f}",
         ha="center",
         va="bottom",
+        alpha=alpha,
     )
     y_min, y_max = ax.get_ylim()
     ax.set_ylim([y_min, y_line_stat + y_offset])
@@ -172,11 +186,15 @@ def _plot_var_stats(ax, data, var_stats, y_var, order, hue_order, width=0.8):
     y_offset = _get_y_offset(ax)
     y_start = data[y_var].max()
 
-    for i, var_stat in enumerate(var_stats):
-
-        y_line_stat = y_start + (i + 1) * y_offset
+    actual_plot_level = 0
+    last_level = 0
+    for i, pair_stat in enumerate(var_stats):
+        if pair_stat["plot_level"] != last_level:
+            actual_plot_level += 1
+            last_level = pair_stat["plot_level"]
+        y_line_stat = y_start + (actual_plot_level + 1) * y_offset
         _plot_var_stat(
-            ax, var_stat, y_line_stat, order, hue_order, width, y_offset
+            ax, pair_stat, y_line_stat, order, hue_order, width, y_offset
         )
 
 
@@ -211,41 +229,30 @@ def _plot_line_variables(axs, data, line, variables):
         )
         # Compute stats
         pairs_of_groups = [
-            (("HET_DEL", "HET"), ("HET_DEL", "DEL")),
-            (("HET_HET", "HET"), ("HET_DEL", "HET")),
-            (("HET_DEL", "DEL"), ("DEL_DEL", "DEL")),
-            (("HET_HET", "HET"), ("DEL_DEL", "DEL")),
-        ]
-        working_groups = [
-            ("HET_HET", "HET"),
-            ("HET_DEL", "DEL"),
-            ("HET_DEL", "HET"),
-            ("DEL_DEL", "DEL"),
+            {"pair": (("WT_HET", "WT"), ("WT_HET", "HET")), "level": 0},
+            {"pair": (("HET_DEL", "HET"), ("HET_DEL", "DEL")), "level": 0},
+            {"pair": (("WT_DEL", "WT"), ("WT_DEL", "DEL")), "level": 1},
+            {"pair": (("WT_WT", "WT"), ("WT_HET", "WT")), "level": 1},
+            {"pair": (("WT_HET", "HET"), ("HET_HET", "HET")), "level": 2},
+            {"pair": (("HET_HET", "HET"), ("HET_DEL", "HET")), "level": 3},
+            {"pair": (("HET_DEL", "DEL"), ("DEL_DEL", "DEL")), "level": 3},
+            {"pair": (("DEL_DEL", "DEL"), ("WT_DEL", "DEL")), "level": 4},
+            {"pair": (("WT_WT", "WT"), ("HET_HET", "HET")), "level": 4},
+            {"pair": (("HET_HET", "HET"), ("DEL_DEL", "DEL")), "level": 5},
+            {"pair": (("WT_WT", "WT"), ("DEL_DEL", "DEL")), "level": 6},
+            {"pair": (("WT_WT", "WT"), ("WT_DEL", "WT")), "level": 7},
         ]
         grouped_data = line_data.groupby(["genotype_group", "genotype"])
-        possible_groups = grouped_data.groups.keys()
-        if all(
-            [
-                possible_group in working_groups
-                for possible_group in possible_groups
-            ]
-        ):
-            try:
-                var_stats = _compute_groups_stats(
-                    grouped_data,
-                    pairs_of_groups,
-                    variable,
-                    permutation_test,
-                    dict(
-                        repetitions=10000,
-                        stat_func=np.mean,
-                        paired=False,
-                        two_sided=False,
-                    ),
-                )
-                _plot_var_stats(
-                    ax, line_data, var_stats, variable, order, hue_order
-                )
-            except Exception as err:
-                print(Exception, err)
-                print("This one failed")
+        var_stats = _compute_groups_stats(
+            grouped_data,
+            pairs_of_groups,
+            variable,
+            permutation_test,
+            dict(
+                repetitions=10000,
+                stat_func=np.mean,
+                paired=False,
+                two_sided=False,
+            ),
+        )
+        _plot_var_stats(ax, line_data, var_stats, variable, order, hue_order)
