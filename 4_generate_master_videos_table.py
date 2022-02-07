@@ -152,15 +152,21 @@ def generate_videos_table(trajectories_table, animals_table):
         right_on=["trial_uid", "folder_name_track", "trial", "gene"],
         how="left",
     )
-    videos_table.drop(["founder_x", "founder_y"], axis=1, inplace=True)
+    print(videos_table.columns)
+    videos_table.drop(["founder_x", "founder_y", 'replicate'], axis=1, inplace=True)
+    print(videos_table.columns)
     videos_table["gene"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[0]
     )
     videos_table["founder"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[1]
     )
+    videos_table["line"] = videos_table.gene + "_" + videos_table.founder
     videos_table["replicate"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[2]
+    )
+    videos_table["line_replicate"] = (
+        videos_table.line + "_" + videos_table.replicate.astype(str)
     )
     videos_table["experiment_type"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[3]

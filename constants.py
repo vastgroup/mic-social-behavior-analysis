@@ -2,6 +2,12 @@ import os
 
 import numpy as np
 
+from trajectorytools.export import (
+    GROUP_VARIABLES,
+    INDIVIDUAL_NEIGHBOUR_VARIABLES,
+    INDIVIDUAL_VARIALBES,
+)
+
 DEFAULT_LOG_FILENAME = "log"
 DEFAULT_SCREEN_FORMATTER = "%(name)-12s: %(levelname)-8s %(message)s"
 DEFAULT_FILE_FORMATTER = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
@@ -46,13 +52,41 @@ VIDEOS_TRACKING_STATE_FILE_NAME = os.path.join(
 )
 
 # Trajectorytools variables
-TRAJECTORYTOOLS_INDIV_VARS_FILE_PATH = os.path.join(
-    GENERATED_TABLES_PATH, "tr_indiv_vars.pkl"
-)
 TR_INDIV_VARS_BOXPLOTS_FILE_PATH = os.path.join(
     GENERATED_FIGURES_PATH, "tr_indiv_vars_boxplots.pdf"
 )
 
+_individual_variables = [
+    var_
+    for var_ in INDIVIDUAL_VARIALBES
+    if not var_["name"]
+    in ["local_polarization", "distance_to_center_of_group"]
+]
+_individual_nb_variables = INDIVIDUAL_NEIGHBOUR_VARIABLES
+_group_variables = [
+    var_
+    for var_ in GROUP_VARIABLES
+    if var_["name"] != "average_local_polarization"
+]
+TRAJECTORYTOOLS_DATASETS_INFO = {
+    "tr_indivs": {
+        "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_indiv_vars.pkl"),
+        "variables": _individual_variables,
+        "variables_names": [var_["name"] for var_ in _individual_variables],
+    },
+    "tr_indivs_nb": {
+        "file_path": os.path.join(
+            GENERATED_TABLES_PATH, "tr_indiv_nb_vars.pkl"
+        ),
+        "variables": _individual_nb_variables,
+        "variables_names": [var_["name"] for var_ in _individual_nb_variables],
+    },
+    "tr_group": {
+        "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_group_vars.pkl"),
+        "variables": _group_variables,
+        "variables_names": [var_["name"] for var_ in _group_variables],
+    },
+}
 
 EXPECTED_COLUMNS_IN_SINGLE_ANIMALS_TABLE = {
     "Date": np.object,
@@ -174,3 +208,4 @@ THRESHOLD_RATIO_TRACKED = 0.98
 THRESHOLD_CERTAINTY_ID_LAST_FISH = 0.90
 
 NUM_FRAMES_FOR_ANALYSIS = 18000
+

@@ -50,3 +50,9 @@ def clean_impossible_speed_jumps(tr_dict, tracking_interval, num_vels=2):
     )
     tr_dict['trajectories'] = trajectories
     return tr_dict, unsolvable_impossible_speed_jumps
+
+
+def data_filter(data, filters):
+    for filter in filters:
+        data = data[filter(data)]
+    return data
