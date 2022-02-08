@@ -1,10 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import pandas as pd
+import os
 
-from constants import GENOTYPE_GROUP_ORDER, GENOTYPE_ORDER
+from constants import (
+    GENOTYPE_GROUP_ORDER,
+    GENOTYPE_ORDER,
+    TRAJECTORYTOOLS_DATASETS_INFO,
+)
+from utils import data_filter
 
-colors = {"WT": "g", "HET": "b", "DEL": "r"}
+from logger import setup_logs
+
+from tqdm import tqdm
+
+logger = setup_logs("plotters")
 
 
 def _get_hue_offsets(width, hue_order):
@@ -20,11 +31,11 @@ def _add_num_data_points(
     num_data_points,
     boxplot_kwargs,
     width=0.8,
-    y_offset_ratio=0.001,
+    y_offset=None,
+    y_lim=None,
 ):
+    y_max, y_min = y_lim
     hue_offsets = _get_hue_offsets(width, boxplot_kwargs["hue_order"])
-    y_min, y_max = ax.get_ylim()
-    y_offset = np.abs(y_max - y_min) * y_offset_ratio
     for i, order_ in enumerate(boxplot_kwargs["order"]):
         for j, hue_order_ in enumerate(boxplot_kwargs["hue_order"]):
             if (order_, hue_order_) in num_data_points:
@@ -48,33 +59,91 @@ def _add_num_data_points(
                     ha="center",
                     va="top",
                 )
+                if y - y_offset < y_min:
+                    ax.set_ylim([y - 2 * y_offset, y_max])
+                y_max, y_min = ax.get_ylim()
+
+
+def _get_outliers(data, whis):
+    q1 = data.quantile(0.25)
+    q3 = data.quantile(0.75)
+    iqr = q3 - q1
+    outliers = (data < q1 - whis * iqr) | (data > q3 + whis * iqr)
+    return outliers
 
 
 def _compute_groups_stats(
     grouped_data,
     pairs_of_groups,
     variable,
+    whis,
     test_func,
     test_func_kwargs,
 ):
     stats = []
+    outliers = []
     for pair_group in pairs_of_groups:
         group_a, group_b = pair_group["pair"]
         group_a_in_data = group_a in grouped_data.groups.keys()
         group_b_in_data = group_b in grouped_data.groups.keys()
         if group_a_in_data and group_b_in_data:
             stat = {}
-            a = grouped_data.get_group(group_a)[variable].values
-            b = grouped_data.get_group(group_b)[variable].values
+
+            grouped_data_a = grouped_data.get_group(group_a)
+            grouped_data_b = grouped_data.get_group(group_b)
+
+            var_data_a = grouped_data_a[variable]
+            var_data_b = grouped_data_b[variable]
+
+            outliers_a = _get_outliers(var_data_a, whis)
+            outliers_b = _get_outliers(var_data_b, whis)
+
+            outliers_a_info = grouped_data_a[outliers_a][
+                ["trial_uid", "identity"]
+            ]
+            outliers_b_info = grouped_data_b[outliers_b][
+                ["trial_uid", "identity"]
+            ]
+            outliers_ = pd.concat([outliers_a_info, outliers_b_info])
+            outliers_["variable"] = [variable] * len(outliers_)
+
             if group_a[0] == group_b[0]:
                 test_kwargs_updated = test_func_kwargs.copy()
                 test_kwargs_updated["paired"] = True
+
+                if ~outliers_.empty:
+                    # logger.info(f"Removing outliers paired data")
+                    # logger.info(f"{outliers_}")
+                    outliers_trials = outliers_.trial_uid.unique()
+                    var_data_a = grouped_data_a[
+                        ~grouped_data_a.trial_uid.isin(outliers_trials)
+                    ][variable]
+                    var_data_b = grouped_data_b[
+                        ~grouped_data_b.trial_uid.isin(outliers_trials)
+                    ][variable]
+
             else:
                 test_kwargs_updated = test_func_kwargs.copy()
-            p_value, stat_value = test_func(a, b, **test_kwargs_updated)
+
+                if ~outliers_.empty:
+                    # logger.info(f"Removing outliers non paired data")
+                    # logger.info(f"{outliers_}")
+                    var_data_a = var_data_a[~outliers_a]
+                    var_data_b = var_data_b[~outliers_b]
+
+            p_value, stat_value = test_func(
+                var_data_a.values, var_data_b.values, **test_kwargs_updated
+            )
             stat["test"] = test_func.__name__
+            stat["variable"] = variable
             stat["group_a"] = group_a
             stat["group_b"] = group_b
+            stat["stat_a"] = test_kwargs_updated["stat_func"](
+                var_data_a.values
+            )
+            stat["stat_b"] = test_kwargs_updated["stat_func"](
+                var_data_b.values
+            )
             stat["plot_level"] = pair_group["level"]
             stat["p_value"] = p_value
             stat["value"] = stat_value
@@ -84,9 +153,10 @@ def _compute_groups_stats(
                     for key, value in test_func_kwargs.items()
                 }
             )
+            outliers.append(outliers_)
             stats.append(stat)
 
-    return stats
+    return stats, outliers
 
 
 def _boxplot_one_variable(ax, data, boxplot_kwargs):
@@ -94,20 +164,19 @@ def _boxplot_one_variable(ax, data, boxplot_kwargs):
         ax=ax,
         data=data,
         boxprops=dict(facecolor="w"),
-        whis=100,
         showmeans=True,
         meanline=True,
         meanprops=dict(linestyle="--", linewidth=1, color="k"),
-        palette=colors,
         **boxplot_kwargs,
     )
+    strip_kwargs = boxplot_kwargs.copy()
+    strip_kwargs.pop("whis", None)
     sns.stripplot(
         ax=ax,
         data=data,
         dodge=True,
         alpha=0.5,
-        palette=colors,
-        **boxplot_kwargs,
+        **strip_kwargs,
     )
     sns.despine(ax=ax)
     ax.set_xticklabels(boxplot_kwargs["order"], rotation=45, ha="right")
@@ -125,10 +194,10 @@ def _set_title(ax, column, title, title_in_colum=0):
         ax.set_title(title)
 
 
-def _get_y_offset(ax, y_offset_ratio=0.1):
-    y_min, y_max = ax.get_ylim()
-    y_offset = np.abs(y_max - y_min) * y_offset_ratio
-    return y_offset
+# def _get_y_offset(ax, y_offset_ratio=0.1):
+#     y_min, y_max = ax.get_ylim()
+#     y_offset = np.abs(y_max - y_min) * y_offset_ratio
+#     return y_offset
 
 
 def _get_x_group(group, order, hue_order, width):
@@ -143,13 +212,7 @@ def _get_x_group(group, order, hue_order, width):
 
 
 def _plot_var_stat(
-    ax,
-    var_stat,
-    y_line_stat,
-    order,
-    hue_order,
-    width,
-    y_offset,
+    ax, var_stat, y_line_stat, order, hue_order, width, y_offset, y_lim
 ):
 
     x_group_a = _get_x_group(
@@ -175,13 +238,26 @@ def _plot_var_stat(
         va="bottom",
         alpha=alpha,
     )
-    y_min, y_max = ax.get_ylim()
-    ax.set_ylim([y_min, y_line_stat + y_offset])
+    y_min, y_max = y_lim
+    ax.plot([x_group_a], [var_stat["stat_a"]], "ok")
+    ax.plot([x_group_b], [var_stat["stat_b"]], "ok")
+    if y_line_stat + y_offset > y_max:
+        ax.set_ylim([y_min, y_line_stat + 2 * y_offset])
 
 
-def _plot_var_stats(ax, data, var_stats, y_var, order, hue_order, width=0.8):
+def _plot_var_stats(
+    ax,
+    data,
+    var_stats,
+    y_var,
+    order,
+    hue_order,
+    width=0.8,
+    y_lim=None,
+    y_offset=None,
+):
 
-    y_offset = _get_y_offset(ax)
+    # y_offset = _get_y_offset(ax)
     y_start = data[y_var].max()
 
     actual_plot_level = 0
@@ -192,8 +268,16 @@ def _plot_var_stats(ax, data, var_stats, y_var, order, hue_order, width=0.8):
             last_level = pair_stat["plot_level"]
         y_line_stat = y_start + (actual_plot_level + 1) * y_offset
         _plot_var_stat(
-            ax, pair_stat, y_line_stat, order, hue_order, width, y_offset
+            ax,
+            pair_stat,
+            y_line_stat,
+            order,
+            hue_order,
+            width,
+            y_offset,
+            y_lim,
         )
+        y_lim = ax.get_ylim()
 
 
 def boxplot_variables(
@@ -206,6 +290,8 @@ def boxplot_variables(
     stats_kwargs,
     valid_x_values=GENOTYPE_GROUP_ORDER,
     valid_hue_values=GENOTYPE_ORDER,
+    variables_ylims=None,
+    varialbes_y_offsets=None,
 ):
     assert len(axs) == len(variables), f"{len(variables)} {len(axs)}"
     if "hue" in boxplot_kwargs:
@@ -233,18 +319,33 @@ def boxplot_variables(
                 ],
             }
         )
+    all_var_stats = []
+    all_outliers = []
     for i, (ax, variable) in enumerate(zip(axs, variables)):
         boxplot_kwargs.update({"y": variable})
         _boxplot_one_variable(ax, data, boxplot_kwargs)
         _set_legend(ax, i, len(variables))
         _set_title(ax, i, f"{title}")
         # add num data points
-        _add_num_data_points(ax, data, num_data_points, boxplot_kwargs)
+        ax.set_ylim(variables_ylims[variable])
+        _add_num_data_points(
+            ax,
+            data,
+            num_data_points,
+            boxplot_kwargs,
+            y_lim=variables_ylims[variable],
+            y_offset=varialbes_y_offsets[variable],
+        )
+        # remove outliers
         grouped_data = data.groupby(
             [boxplot_kwargs["x"], boxplot_kwargs["hue"]]
         )
-        var_stats = _compute_groups_stats(
-            grouped_data, pairs_of_groups_for_stats, variable, **stats_kwargs
+        var_stats, outliers = _compute_groups_stats(
+            grouped_data,
+            pairs_of_groups_for_stats,
+            variable,
+            whis=boxplot_kwargs["whis"],
+            **stats_kwargs,
         )
         _plot_var_stats(
             ax,
@@ -253,4 +354,96 @@ def boxplot_variables(
             variable,
             boxplot_kwargs["order"],
             boxplot_kwargs["hue_order"],
+            y_lim=ax.get_ylim(),
+            y_offset=varialbes_y_offsets[variable],
         )
+        variables_ylims[variable] = ax.get_ylim()
+        all_var_stats.extend(var_stats)
+        all_outliers.extend(outliers)
+    all_var_stats = pd.DataFrame(all_var_stats)
+    all_outliers = pd.concat(all_outliers)
+    return all_var_stats, all_outliers
+
+
+def plot(config_dict):
+    logger.info(f"Plotting with {config_dict}")
+    data_info = TRAJECTORYTOOLS_DATASETS_INFO[
+        config_dict["data_variables_group"]
+    ]
+    logger.info("Getting data")
+    data = pd.read_pickle(data_info["file_path"])
+    logger.info("Filtering data")
+    data_filtered = data_filter(data, config_dict["data_filters"])
+    logger.info("Groupping data")
+    data_filtered_stat = (
+        data_filtered.groupby(config_dict["groupby_cols"])
+        .agg(config_dict["agg_rule"])
+        .reset_index()
+    )
+    assert config_dict["rows_partitioned_by"] in data_filtered_stat
+    partitions = data_filtered_stat[
+        config_dict["rows_partitioned_by"]
+    ].unique()
+    variables = config_dict["variables"]
+    logger.info("Preparind figgure")
+    fig, axs = plt.subplots(
+        len(partitions),
+        len(variables),
+        figsize=(30, 5 * len(partitions)),
+        sharey="col",
+    )
+    plt.subplots_adjust(wspace=0.4, hspace=0.5)
+    variables_ylims = {}
+    varialbes_y_offsets = {}
+    for variable in variables:
+        y_min = data_filtered_stat[variable].min()
+        y_max = data_filtered_stat[variable].max()
+        variables_ylims[variable] = (y_min, y_max)
+        varialbes_y_offsets[variable] = np.abs(y_max - y_min) * 0.1
+    all_var_stats = []
+    all_outliers = []
+    for axs_row, partition in tqdm(zip(axs, partitions), desc="Plotting..."):
+        logger.info(f"Plotting partition {partition}")
+        partition_data = data_filtered_stat[
+            data_filtered_stat[config_dict["rows_partitioned_by"]] == partition
+        ]
+        all_var_stats_, all_outliers_ = boxplot_variables(
+            axs_row,
+            partition_data,
+            variables,
+            partition,
+            config_dict["boxplot_kwargs"],
+            config_dict["pairs_of_groups_for_stats"],
+            config_dict["stats_kwargs"],
+            variables_ylims=variables_ylims,
+            varialbes_y_offsets=varialbes_y_offsets,
+        )
+        all_var_stats_["partition"] = [partition] * len(all_var_stats_)
+        all_var_stats.append(all_var_stats_)
+        all_outliers.append(all_outliers_)
+
+    all_var_stats = pd.concat(all_var_stats)
+    all_outliers = pd.concat(all_outliers)
+
+    if not os.path.isdir(config_dict["save_path"]):
+        os.makedirs(config_dict["save_path"])
+
+    for extension in config_dict["extensions"]:
+        fig.savefig(
+            os.path.join(
+                config_dict["save_path"],
+                config_dict["file_name"] + f".{extension}",
+            )
+        )
+
+    data_filtered_stat.to_csv(
+        os.path.join(config_dict["save_path"], "data.csv"), index=False
+    )
+    all_var_stats.to_csv(
+        os.path.join(config_dict["save_path"], "stats.csv"), index=False
+    )
+    all_outliers.to_csv(
+        os.path.join(config_dict["save_path"], "outliers.csv"), index=False
+    )
+
+    return data_filtered_stat, all_var_stats, all_outliers

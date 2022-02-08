@@ -1,6 +1,7 @@
 import argparse
 import copy
 import os
+from re import S
 import time
 from typing import List
 
@@ -16,6 +17,9 @@ from constants import (
     TRAJECTORIES_INDEX_FILE_NAME,
     TRAJECTORYTOOLS_DATASETS_INFO,
     VIDEOS_INDEX_FILE_NAME,
+    SIGMA,
+    PX_CM,
+    FRAME_RATE,
 )
 from trajectorytools.export import tr_variables_to_df
 from utils import clean_impossible_speed_jumps
@@ -172,7 +176,9 @@ def _add_line_and_genotype_info(tr_vars_df, videos_table, animals_table):
     return tr_vars_df
 
 
-def _generate_variables_table(videos_table, variables_list):
+def _generate_variables_table(
+    videos_table, animals_table, variables_list, scale_to_body_length=False
+):
     tr_vars_dfs = []
     for idx, tr_row in tqdm(
         videos_table.iterrows(),
@@ -180,17 +186,36 @@ def _generate_variables_table(videos_table, variables_list):
         total=len(videos_table),
     ):
         if tr_row.tracked and tr_row.valid_for_analysis:
+            animals = animals_table[
+                animals_table.trial_uid == tr_row.trial_uid
+            ]
+            mean_size = np.mean(animals.size_cm)
+            if np.isnan(mean_size):
+                logger.info(
+                    "Getting mean size_cm from all videos of same gene"
+                )
+                mean_size = animals_table[
+                    (animals_table.gene == tr_row.gene)
+                    & (animals_table.founder == tr_row.founder)
+                    & (animals_table.replicate == tr_row.replicate)
+                ].size_cm.mean()
+            if scale_to_body_length:
+                length_unit = PX_CM * mean_size
+                length_unit_name = "BL"
+            else:
+                length_unit = PX_CM
+                length_unit_name = "cm"
             tr = get_trajectories(
                 tr_row.abs_trajectory_path,
                 center=tr_row.roi_center,
                 interpolate_nans=True,
-                smooth_params={"sigma": 1.0},
+                smooth_params={"sigma": SIGMA},
                 length_unit_dict={
-                    "length_unit": 54,
-                    "length_unit_name": "cm",
+                    "length_unit": length_unit,
+                    "length_unit_name": length_unit_name,
                 },
                 time_unit_dict={
-                    "time_unit": 30,
+                    "time_unit": FRAME_RATE,
                     "time_unit_name": "seconds",
                 },
                 tracking_interval=[0, NUM_FRAMES_FOR_ANALYSIS],
@@ -203,6 +228,10 @@ def _generate_variables_table(videos_table, variables_list):
 
 
 if __name__ == "__main__":
+
+    from logger import setup_logs
+
+    logger = setup_logs("get_variables_tables")
 
     videos_table = pd.read_csv(VIDEOS_INDEX_FILE_NAME)
     videos_table["abs_trajectory_path"] = videos_table[
@@ -217,7 +246,10 @@ if __name__ == "__main__":
     for name, tt_dataset_info in TRAJECTORYTOOLS_DATASETS_INFO.items():
         if not os.path.isfile(tt_dataset_info["file_path"]):
             tr_vars_df = _generate_variables_table(
-                videos_table, tt_dataset_info["variables"]
+                videos_table,
+                animals_table,
+                tt_dataset_info["variables"],
+                scale_to_body_length=tt_dataset_info["scale_to_body_length"],
             )
             tr_vars_df = _add_line_and_genotype_info(
                 tr_vars_df, videos_table, animals_table

@@ -8,6 +8,11 @@ from trajectorytools.export import (
     INDIVIDUAL_VARIALBES,
 )
 
+# Constants
+SIGMA = 1
+PX_CM = 54
+FRAME_RATE = 29
+
 DEFAULT_LOG_FILENAME = "log"
 DEFAULT_SCREEN_FORMATTER = "%(name)-12s: %(levelname)-8s %(message)s"
 DEFAULT_FILE_FORMATTER = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
@@ -72,17 +77,44 @@ TRAJECTORYTOOLS_DATASETS_INFO = {
     "tr_indivs": {
         "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_indiv_vars.pkl"),
         "variables": _individual_variables,
+        "scale_to_body_length": False,
+        "variables_names": [var_["name"] for var_ in _individual_variables],
+    },
+    "tr_indivs_bl": {
+        "file_path": os.path.join(
+            GENERATED_TABLES_PATH, "tr_indiv_vars_bl.pkl"
+        ),
+        "variables": _individual_variables,
+        "scale_to_body_length": True,
         "variables_names": [var_["name"] for var_ in _individual_variables],
     },
     "tr_indivs_nb": {
         "file_path": os.path.join(
             GENERATED_TABLES_PATH, "tr_indiv_nb_vars.pkl"
         ),
+        "scale_to_body_length": False,
+        "variables": _individual_nb_variables,
+        "variables_names": [var_["name"] for var_ in _individual_nb_variables],
+    },
+    "tr_indivs_nb_bl": {
+        "file_path": os.path.join(
+            GENERATED_TABLES_PATH, "tr_indiv_nb_vars_bl.pkl"
+        ),
+        "scale_to_body_length": True,
         "variables": _individual_nb_variables,
         "variables_names": [var_["name"] for var_ in _individual_nb_variables],
     },
     "tr_group": {
         "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_group_vars.pkl"),
+        "scale_to_body_length": False,
+        "variables": _group_variables,
+        "variables_names": [var_["name"] for var_ in _group_variables],
+    },
+    "tr_group_bl": {
+        "file_path": os.path.join(
+            GENERATED_TABLES_PATH, "tr_group_vars_bl.pkl"
+        ),
+        "scale_to_body_length": True,
         "variables": _group_variables,
         "variables_names": [var_["name"] for var_ in _group_variables],
     },
@@ -208,4 +240,3 @@ THRESHOLD_RATIO_TRACKED = 0.98
 THRESHOLD_CERTAINTY_ID_LAST_FISH = 0.90
 
 NUM_FRAMES_FOR_ANALYSIS = 18000
-
