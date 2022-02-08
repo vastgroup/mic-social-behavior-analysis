@@ -182,6 +182,20 @@ def _boxplot_one_variable(ax, data, boxplot_kwargs):
     ax.set_xticklabels(boxplot_kwargs["order"], rotation=45, ha="right")
 
 
+def _boxplot_axes_one_variable(ax, data, variable):
+    ax.axhline(data[variable].median(), c="k")
+    ax.axhline(data[variable].mean(), ls="--", c="k")
+    ax.axhline(data[variable].quantile(0.25), c=".25")
+    ax.axhline(data[variable].quantile(0.75), c=".25")
+    q1 = data[variable].quantile(0.25)
+    q3 = data[variable].quantile(0.75)
+    iqr = q3 - q1
+    whis_low = q1 - 1.5 * iqr
+    whis_high = q3 + 1.5 * iqr
+    ax.axhline(whis_low, c=".25")
+    ax.axhline(whis_high, c=".25")
+
+
 def _set_legend(ax, col_number, num_cols):
     if col_number != num_cols - 1:
         ax.get_legend().remove()
@@ -280,7 +294,7 @@ def _plot_var_stats(
         y_lim = ax.get_ylim()
 
 
-def boxplot_variables(
+def boxplot_variables_partition(
     axs,
     data,
     variables,
@@ -407,7 +421,7 @@ def plot(config_dict):
         partition_data = data_filtered_stat[
             data_filtered_stat[config_dict["rows_partitioned_by"]] == partition
         ]
-        all_var_stats_, all_outliers_ = boxplot_variables(
+        all_var_stats_, all_outliers_ = boxplot_variables_partition(
             axs_row,
             partition_data,
             variables,
@@ -445,5 +459,43 @@ def plot(config_dict):
     all_outliers.to_csv(
         os.path.join(config_dict["save_path"], "outliers.csv"), index=False
     )
+
+    # TODO: Factorize this into another plot
+    fig2, axs = plt.subplots(
+        len(variables), 1, figsize=(30, 10 * len(variables))
+    )
+    data_filtered_stat["genotype_group_genotype"] = (
+        data_filtered_stat["genotype_group"]
+        + "-"
+        + data_filtered_stat["genotype"]
+    )
+    colors = {
+        "HET_HET-HET": "b",
+        "HET_DEL-HET": "g",
+        "HET_DEL-DEL": "y",
+        "DEL_DEL-DEL": "r",
+    }
+    for ax, variable in zip(axs, variables):
+        _boxplot_one_variable(
+            ax,
+            data_filtered_stat,
+            {
+                "x": "line_replicate",
+                "y": variable,
+                "hue": "genotype_group_genotype",
+                "palette": colors,
+                "order": data_filtered_stat.line_replicate.unique(),
+                "hue_order": colors.keys(),
+                "whis": 1.5,
+            },
+        )
+        _boxplot_axes_one_variable(ax, data_filtered_stat, variable)
+    for extension in config_dict["extensions"]:
+        fig2.savefig(
+            os.path.join(
+                config_dict["save_path"],
+                "vars_dist_summary" + f".{extension}",
+            )
+        )
 
     return data_filtered_stat, all_var_stats, all_outliers
