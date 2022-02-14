@@ -1,19 +1,18 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import pandas as pd
-import os
+import seaborn as sns
+from tqdm import tqdm
 
 from constants import (
     GENOTYPE_GROUP_ORDER,
     GENOTYPE_ORDER,
     TRAJECTORYTOOLS_DATASETS_INFO,
 )
-from utils import data_filter
-
 from logger import setup_logs
-
-from tqdm import tqdm
+from utils import data_filter
 
 logger = setup_logs("plotters")
 
@@ -131,19 +130,26 @@ def _compute_groups_stats(
                     var_data_a = var_data_a[~outliers_a]
                     var_data_b = var_data_b[~outliers_b]
 
-            p_value, stat_value = test_func(
+            if test_kwargs_updated["func"] == "median":
+                func = lambda x, y: np.abs(np.median(x) - np.median(y))
+                stat_func = np.median
+            elif test_kwargs_updated["func"] == "mean":
+                func = lambda x, y: np.abs(np.mean(x) - np.mean(y))
+                stat_func = np.mean
+            test_kwargs_updated["func"] = func
+
+            p_value = test_func(
                 var_data_a.values, var_data_b.values, **test_kwargs_updated
+            )
+            stat_value = test_kwargs_updated ["func"](
+                var_data_a.values, var_data_b.values
             )
             stat["test"] = test_func.__name__
             stat["variable"] = variable
             stat["group_a"] = group_a
             stat["group_b"] = group_b
-            stat["stat_a"] = test_kwargs_updated["stat_func"](
-                var_data_a.values
-            )
-            stat["stat_b"] = test_kwargs_updated["stat_func"](
-                var_data_b.values
-            )
+            stat["stat_a"] = stat_func(var_data_a.values)
+            stat["stat_b"] = stat_func(var_data_b.values)
             stat["plot_level"] = pair_group["level"]
             stat["p_value"] = p_value
             stat["value"] = stat_value

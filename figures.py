@@ -1,15 +1,39 @@
 import os
+
+import numpy as np
+from mlxtend.evaluate import permutation_test
+
 from constants import (
-    _individual_variables,
-    _individual_nb_variables,
-    _group_variables,
     GENERATED_FIGURES_PATH,
+    _group_variables,
+    _individual_nb_variables,
+    _individual_variables,
 )
 from stats import PAIRS_OF_GROUPS
 
-# Consider using http://rasbt.github.io/mlxtend/user_guide/evaluate/permutation_test/
-from permutation_stats import permutation_test
-import numpy as np
+# Stats
+mean_stats_kwargs = {
+    "method": "approximate",
+    "num_rounds": 10000,
+    "func": "mean",
+    "paired": False,
+}
+median_stats_kwargs = {
+    "method": "approximate",
+    "num_rounds": 10000,
+    "func": "median",
+    "paired": False,
+}
+
+# Agg rule
+mean_agg_rule_tr_indivs = {
+    var_["name"]: "median" if var_["name"] != "distance_travelled" else "max"
+    for var_ in _individual_variables
+}
+median_agg_rule_tr_indivs = {
+    var_["name"]: "median" if var_["name"] != "distance_travelled" else "max"
+    for var_ in _individual_variables
+}
 
 TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN = {
     "save_path": os.path.join(
@@ -30,10 +54,7 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN = {
         "abs_tg_acceleration",
         "distance_travelled",
     ],
-    "agg_rule": {
-        var_["name"]: "mean" if var_["name"] != "distance_travelled" else "max"
-        for var_ in _individual_variables
-    },
+    "agg_rule": mean_agg_rule_tr_indivs,
     "groupby_cols": [
         "trial_uid",
         "identity",
@@ -52,14 +73,27 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN = {
     "pairs_of_groups_for_stats": PAIRS_OF_GROUPS,
     "stats_kwargs": {
         "test_func": permutation_test,
-        "test_func_kwargs": {
-            "repetitions": 10000,
-            "stat_func": np.mean,
-            "paired": False,
-            "two_sided": False,
-        },
+        "test_func_kwargs": mean_stats_kwargs,
     },
 }
+
+
+TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEDIAN_STAT_MEDIAN = (
+    TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN.copy()
+)
+TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEDIAN_STAT_MEDIAN.update(
+    {
+        "save_path": os.path.join(
+            GENERATED_FIGURES_PATH,
+            "boxplot_line_replicate_median_stat_tr_indivs",
+        ),
+        "agg_rule": median_agg_rule_tr_indivs,
+        "stats_kwargs": {
+            "test_func": permutation_test,
+            "test_func_kwargs": median_stats_kwargs,
+        },
+    }
+)
 
 TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN_BL = (
     TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN.copy()
@@ -73,6 +107,24 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN_BL.update(
         "data_variables_group": "tr_indivs_bl",
     }
 )
+
+TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEDIAN_STAT_MEDIAN_BL = (
+    TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN_BL.copy()
+)
+TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEDIAN_STAT_MEDIAN_BL.update(
+    {
+        "save_path": os.path.join(
+            GENERATED_FIGURES_PATH,
+            "boxplot_line_replicate_median_stat_tr_indivs_bl",
+        ),
+        "agg_rule": median_agg_rule_tr_indivs,
+        "stats_kwargs": {
+            "test_func": permutation_test,
+            "test_func_kwargs": median_stats_kwargs,
+        },
+    }
+)
+
 
 TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN = (
     TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN.copy()
@@ -88,6 +140,23 @@ TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN.update(
 )
 
 
+TR_INDIVS_BOXPLOT_LINE_MEDIAN_STAT_MEDIAN = (
+    TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN.copy()
+)
+TR_INDIVS_BOXPLOT_LINE_MEDIAN_STAT_MEDIAN.update(
+    {
+        "save_path": os.path.join(
+            GENERATED_FIGURES_PATH,
+            "boxplot_line_median_stat_tr_indivs",
+        ),
+        "agg_rule": median_agg_rule_tr_indivs,
+        "stats_kwargs": {
+            "test_func": permutation_test,
+            "test_func_kwargs": median_stats_kwargs,
+        },
+    }
+)
+
 TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN_BL = (
     TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN.copy()
 )
@@ -99,6 +168,23 @@ TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN_BL.update(
         ),
         "data_variables_group": "tr_indivs_bl",
         "rows_partitioned_by": "line",
+    }
+)
+
+TR_INDIVS_BOXPLOT_LINE_MEDIAN_STAT_MEDIAN_BL = (
+    TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN_BL.copy()
+)
+TR_INDIVS_BOXPLOT_LINE_MEDIAN_STAT_MEDIAN_BL.update(
+    {
+        "save_path": os.path.join(
+            GENERATED_FIGURES_PATH,
+            "boxplot_line_median_stat_tr_indivs_bl",
+        ),
+        "agg_rule": median_agg_rule_tr_indivs,
+        "stats_kwargs": {
+            "test_func": permutation_test,
+            "test_func_kwargs": median_stats_kwargs,
+        },
     }
 )
 
