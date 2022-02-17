@@ -13,3 +13,17 @@ PAIRS_OF_GROUPS = [
     {"pair": (("WT_WT", "WT"), ("DEL_DEL", "DEL")), "level": 6},
     {"pair": (("WT_WT", "WT"), ("WT_DEL", "WT")), "level": 7},
 ]
+
+
+MEAN_STATS_KWARGS = {
+    "method": "approximate",
+    "num_rounds": 10000,
+    "func": "mean",
+    "paired": False,
+}
+MEDIAN_STATS_KWARGS = {
+    "method": "approximate",
+    "num_rounds": 10000,
+    "func": "median",
+    "paired": False,
+}

@@ -9,27 +9,17 @@ from constants import (
     _individual_nb_variables,
     _individual_variables,
 )
-from stats import PAIRS_OF_GROUPS
-
-# Stats
-mean_stats_kwargs = {
-    "method": "approximate",
-    "num_rounds": 10000,
-    "func": "mean",
-    "paired": False,
-}
-median_stats_kwargs = {
-    "method": "approximate",
-    "num_rounds": 10000,
-    "func": "median",
-    "paired": False,
-}
+from stats import MEAN_STATS_KWARGS, MEDIAN_STATS_KWARGS, PAIRS_OF_GROUPS
 
 # Agg rule
 mean_agg_rule_tr_indivs = {
-    var_["name"]: "median" if var_["name"] != "distance_travelled" else "max"
+    var_["name"]: "mean" if var_["name"] != "distance_travelled" else "max"
     for var_ in _individual_variables
 }
+mean_agg_rule_tr_group = {var_["name"]: "mean" for var_ in _group_variables}
+mean_agg_rule_tr_indiv_nb = {
+    var_["name"]: "mean" for var_ in _individual_nb_variables
+}  # Add circmean and circabs
 median_agg_rule_tr_indivs = {
     var_["name"]: "median" if var_["name"] != "distance_travelled" else "max"
     for var_ in _individual_variables
@@ -47,12 +37,12 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN = {
         lambda x: ~x["gene"].str.contains("srrm"),
     ],
     "variables": [
-        "distance_to_origin",
+        "normed_distance_to_origin",
         "speed",
-        "acceleration",
-        "abs_normal_acceleration",
-        "abs_tg_acceleration",
-        "distance_travelled",
+        # "acceleration",
+        # "abs_normal_acceleration",
+        # "abs_tg_acceleration",
+        # "distance_travelled",
     ],
     "agg_rule": mean_agg_rule_tr_indivs,
     "groupby_cols": [
@@ -73,7 +63,7 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN = {
     "pairs_of_groups_for_stats": PAIRS_OF_GROUPS,
     "stats_kwargs": {
         "test_func": permutation_test,
-        "test_func_kwargs": mean_stats_kwargs,
+        "test_func_kwargs": MEAN_STATS_KWARGS,
     },
 }
 
@@ -90,7 +80,7 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEDIAN_STAT_MEDIAN.update(
         "agg_rule": median_agg_rule_tr_indivs,
         "stats_kwargs": {
             "test_func": permutation_test,
-            "test_func_kwargs": median_stats_kwargs,
+            "test_func_kwargs": MEDIAN_STATS_KWARGS,
         },
     }
 )
@@ -120,7 +110,7 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEDIAN_STAT_MEDIAN_BL.update(
         "agg_rule": median_agg_rule_tr_indivs,
         "stats_kwargs": {
             "test_func": permutation_test,
-            "test_func_kwargs": median_stats_kwargs,
+            "test_func_kwargs": MEDIAN_STATS_KWARGS,
         },
     }
 )
@@ -152,7 +142,7 @@ TR_INDIVS_BOXPLOT_LINE_MEDIAN_STAT_MEDIAN.update(
         "agg_rule": median_agg_rule_tr_indivs,
         "stats_kwargs": {
             "test_func": permutation_test,
-            "test_func_kwargs": median_stats_kwargs,
+            "test_func_kwargs": MEDIAN_STATS_KWARGS,
         },
     }
 )
@@ -183,56 +173,10 @@ TR_INDIVS_BOXPLOT_LINE_MEDIAN_STAT_MEDIAN_BL.update(
         "agg_rule": median_agg_rule_tr_indivs,
         "stats_kwargs": {
             "test_func": permutation_test,
-            "test_func_kwargs": median_stats_kwargs,
+            "test_func_kwargs": MEDIAN_STATS_KWARGS,
         },
     }
 )
-
-TR_INDIVS_BOXPLOT_LINE_REPLICATE_STAT_MEAN_ALL = {
-    "save_path": os.path.join(
-        GENERATED_FIGURES_PATH,
-        "boxplot_line_replicate_mean_stat_tr_indivs_all",
-    ),
-    "file_name": "plot",
-    "extensions": ["pdf", "png"],
-    "data_variables_group": "tr_indivs",
-    "data_filters": [
-        lambda x: x["experiment_type"] == 1,
-        lambda x: ~x["gene"].str.contains("srrm"),
-    ],
-    "variables": [
-        "distance_to_origin",
-        "speed",
-        "acceleration",
-        "abs_normal_acceleration",
-        "abs_tg_acceleration",
-        "distance_travelled",
-    ],
-    "agg_rule": {
-        var_["name"]: "mean" if var_["name"] != "distance_travelled" else "max"
-        for var_ in _individual_variables
-    },
-    "groupby_cols": [
-        "trial_uid",
-        "identity",
-        "genotype_group",
-        "genotype",
-        "line",
-        "line_replicate",
-    ],
-    "rows_partitioned_by": "variables",
-    "boxplot_kwargs": {
-        "x": "genotype_group",
-        "hue": "genotype_group_genotype",
-        "whis": 1.5,
-        "palette": {
-            "HET_HET-HET": "b",
-            "HET_DEL-HET": "g",
-            "HET_DEL-DEL": "y",
-            "DEL_DEL-DEL": "r",
-        },
-    },
-}
 
 # TR_INDIVS_NB_BOXPLOT_MEAN_STAT_MEAN = {
 #     "tr_indivs_nb": {
@@ -255,14 +199,14 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_STAT_MEAN_ALL = {
 #         },
 #     },
 # }
-# TR_GROUP_BOXPLOT_MEAN_STAT_MEAN = {
-#     "tr_group": {
-#         "groupby_cols": [
-#             "trial_uid",
-#             "genotype_group",
-#             "line",
-#             "line_replicate",
-#         ],
-#         "agg_rule": {var_["name"]: "mean" for var_ in _group_variables},
-#     },
-# }
+TR_GROUP_BOXPLOT_MEAN_STAT_MEAN = {
+    "tr_group": {
+        "groupby_cols": [
+            "trial_uid",
+            "genotype_group",
+            "line",
+            "line_replicate",
+        ],
+        "agg_rule": {var_["name"]: "mean" for var_ in _group_variables},
+    },
+}

@@ -4,6 +4,7 @@ from glob import glob
 
 import numpy as np
 import pandas as pd
+
 import trajectorytools as tt
 
 logger = logging.getLogger(__name__)
@@ -48,11 +49,14 @@ def clean_impossible_speed_jumps(tr_dict, tracking_interval, num_vels=2):
     unsolvable_impossible_speed_jumps = len(
         np.where(speed_clean > num_vels * typical_max_speed)[0]
     )
-    tr_dict['trajectories'] = trajectories
+    tr_dict["trajectories"] = trajectories
     return tr_dict, unsolvable_impossible_speed_jumps
 
 
 def data_filter(data, filters):
+    logger.info("Filtering data")
+    logger.info(f"original shape {data.shape}")
     for filter in filters:
         data = data[filter(data)]
+        logger.info(data.shape)
     return data
