@@ -67,12 +67,68 @@ _individual_variables = [
     if not var_["name"]
     in ["local_polarization", "distance_to_center_of_group"]
 ]
-_individual_nb_variables = INDIVIDUAL_NEIGHBOUR_VARIABLES
+_individual_variables_names = [var_["name"] for var_ in _individual_variables]
+_individual_variables_diff_names = [
+    f"{v}_diff" for v in _individual_variables_names
+]
+_individual_variables_standardized_names = [
+    f"{v}_standardized" for v in _individual_variables_names
+]
+_individual_variables_enhanced_names = (
+    _individual_variables_names
+    + _individual_variables_diff_names
+    + _individual_variables_standardized_names
+)
+
+
+_individual_nb_variables = [
+    var_
+    for var_ in INDIVIDUAL_NEIGHBOUR_VARIABLES
+    if not var_["name"] in ["nb_cos_angle"]
+]
+_individual_nb_variables_names = [
+    var_["name"] for var_ in _individual_nb_variables
+]
+_individual_nb_variables_diff_names = [
+    f"{v}_diff" for v in _individual_nb_variables_names
+]
+_individual_nb_variables_standardized_names = [
+    f"{v}_standardized" for v in _individual_nb_variables_names
+]
+_individual_nb_variables_enhanced_names = (
+    _individual_nb_variables_names
+    + _individual_nb_variables_diff_names
+    + _individual_nb_variables_standardized_names
+)
+
+
 _group_variables = [
     var_
     for var_ in GROUP_VARIABLES
     if var_["name"] != "average_local_polarization"
 ]
+_group_variables_names = [var_["name"] for var_ in _group_variables]
+_group_variables_diff_names = [f"{v}_diff" for v in _group_variables_names]
+_group_variables_standardized_names = [
+    f"{v}_standardized" for v in _group_variables_names
+]
+_group_varialbes_enhanced_names = (
+    _group_variables_names
+    + _group_variables_diff_names
+    + _group_variables_standardized_names
+)
+
+all_variables_names = (
+    [v for v in _individual_variables_names]
+    + [v for v in _individual_nb_variables_names]
+    + [v for v in _group_variables_names]
+)
+all_variables_names_enhanced = (
+    _individual_variables_enhanced_names
+    + _individual_nb_variables_enhanced_names
+    + _group_varialbes_enhanced_names
+)
+
 TRAJECTORYTOOLS_DATASETS_INFO = {
     "tr_indivs": {
         "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_indiv_vars.pkl"),
@@ -185,7 +241,29 @@ GENOTYPE_GROUP_ORDER = [
     "DEL_DEL",
     "WT_DEL",
 ]
+FOCAL_NB_GENOTYPE_ORDER = [
+    "WT-WT",
+    "WT-HET",
+    "WT-DEL",
+    "HET-WT",
+    "HET-HET",
+    "HET-DEL",
+    "DEL-WT",
+    "DEL-HET",
+    "DEL-DEL",
+]
 GENOTYPE_ORDER = ["WT", "HET", "DEL"]
+GENOTYPE_GROUP_GENOTYPE_ORDER = [
+    "WT_WT-WT",
+    "WT_HET-WT",
+    "WT_HET-HET",
+    "HET_HET-HET",
+    "HET_DEL-HET",
+    "HET_DEL-DEL",
+    "DEL_DEL-DEL",
+    "WT_DEL-DEL",
+    "WT_DEL-WT",
+]
 
 PER_FISH_COLUMNS = [
     "fish_num",
@@ -240,3 +318,24 @@ THRESHOLD_RATIO_TRACKED = 0.98
 THRESHOLD_CERTAINTY_ID_LAST_FISH = 0.90
 
 NUM_FRAMES_FOR_ANALYSIS = 18000
+
+
+COLORS = {
+    "WT_WT-WT": "k",
+    "WT_HET-WT": "k",
+    "WT_HET-HET": "k",
+    "HET_HET-HET": "b",
+    "HET_DEL-HET": "g",
+    "HET_DEL-DEL": "y",
+    "DEL_DEL-DEL": "r",
+    "WT_DEL-DEL": "k",
+    "WT_DEL-WT": "k",
+    "HET": "b",
+    "DEL": "r",
+    "HET_HET": "b",
+    "DEL_DEL": "r",
+    "HET_DEL": "y",
+    "WT_WT": "k",
+    "WT_HET": "k",
+    "WT_DEL": "k",
+}

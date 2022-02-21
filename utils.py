@@ -4,6 +4,7 @@ from glob import glob
 
 import numpy as np
 import pandas as pd
+import scipy.stats as ss
 
 import trajectorytools as tt
 
@@ -60,3 +61,25 @@ def data_filter(data, filters):
         data = data[filter(data)]
         logger.info(data.shape)
     return data
+
+
+def circmean(x):
+    return ss.circmean(x, high=np.pi, low=-np.pi)
+
+
+def circstd(x):
+    return ss.circstd(x, high=np.pi, low=-np.pi)
+
+
+def ratio_in_front(x, angle=90):
+    angle_rad = angle / 180 * np.pi
+    front_angle = angle_rad
+    front = (x.abs() <= front_angle).sum()
+    return front / len(x)
+
+
+def ratio_in_back(x, angle=90):
+    angle_rad = angle / 180 * np.pi
+    back_angle = np.pi - angle_rad
+    back = (x.abs() >= back_angle).sum()
+    return back / len(x)
