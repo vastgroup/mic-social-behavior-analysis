@@ -1,6 +1,6 @@
 import logging
 import datetime
-from constants import DEFAULT_LOG_FILENAME, DEFAULT_FILE_FORMATTER, DEFAULT_SCREEN_FORMATTER
+from .constants import DEFAULT_LOG_FILENAME, DEFAULT_FILE_FORMATTER, DEFAULT_SCREEN_FORMATTER
 
 def setup_logs(log_filename=DEFAULT_LOG_FILENAME):
     # crating root logger

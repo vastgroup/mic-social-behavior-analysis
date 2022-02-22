@@ -3,32 +3,15 @@ import os
 import numpy as np
 from mlxtend.evaluate import permutation_test
 
-from constants import (
+from .constants import (
     COLORS,
     GENERATED_FIGURES_PATH,
     _group_varialbes_enhanced_names,
-    _individual_nb_variables_enhanced_names,
-    _individual_variables_enhanced_names,
 )
-from stats import MEAN_STATS_KWARGS, PAIRS_OF_GROUPS
-from utils import circmean, circstd, ratio_in_back, ratio_in_front
+from .stats import MEAN_STATS_KWARGS, PAIRS_OF_GROUPS
 
-# Agg rule
-mean_agg_rule_tr_indivs = {
-    var_: ["median", "mean", "std"]
-    if not "distance_travelled" in var_
-    else "max"
-    for var_ in _individual_variables_enhanced_names
-}
-mean_agg_rule_tr_group = {
-    var_: ["median", "mean", "std"] for var_ in _group_varialbes_enhanced_names
-}
-mean_agg_rule_tr_indiv_nb = {
-    var_: ["median", "mean", "std"]
-    if not "nb_angle" in var_
-    else [circmean, circstd, ratio_in_front, ratio_in_back]
-    for var_ in _individual_nb_variables_enhanced_names
-}
+
+
 
 TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN_BL = {
     "save_path": os.path.join(

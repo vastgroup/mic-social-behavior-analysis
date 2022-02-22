@@ -1,8 +1,8 @@
 import argparse
 import copy
 import os
-from re import S
 import time
+from re import S
 from typing import List
 
 import numpy as np
@@ -12,14 +12,14 @@ from tqdm import tqdm
 import trajectorytools as tt
 from constants import (
     ANIMALS_INDEX_FILE_PATH,
+    FRAME_RATE,
     NUM_FRAMES_FOR_ANALYSIS,
+    PX_CM,
+    SIGMA,
     TRACKING_DATA_FOLDER_PATH,
     TRAJECTORIES_INDEX_FILE_NAME,
     TRAJECTORYTOOLS_DATASETS_INFO,
     VIDEOS_INDEX_FILE_NAME,
-    SIGMA,
-    PX_CM,
-    FRAME_RATE,
 )
 from trajectorytools.export import tr_variables_to_df
 from utils import clean_impossible_speed_jumps
@@ -147,6 +147,8 @@ def _add_line_and_genotype_info(tr_vars_df, videos_table, animals_table):
                 "trial_uid",
                 "line",
                 "line_replicate",
+                "line_experiment",
+                "line_replicate_experiment",
                 "gene",
                 "founder",
                 "replicate",
@@ -221,6 +223,13 @@ def _generate_variables_table(
                 tracking_interval=[0, NUM_FRAMES_FOR_ANALYSIS],
             )
             tr_vars_df = tr_variables_to_df(tr, variables_list)
+            if "s_x" in tr_vars_df.columns:
+                tr_vars_df["s_x_normed"] = (
+                    tr_vars_df["s_x"] / tr_vars_df["s_x"].abs().max()
+                )
+                tr_vars_df["s_y_normed"] = (
+                    tr_vars_df["s_y"] / tr_vars_df["s_y"].abs().max()
+                )
             tr_vars_df["trial_uid"] = [tr_row.trial_uid] * len(tr_vars_df)
             tr_vars_dfs.append(tr_vars_df)
     tr_vars_df = pd.concat(tr_vars_dfs).reset_index()
@@ -248,7 +257,7 @@ if __name__ == "__main__":
             tr_vars_df = _generate_variables_table(
                 videos_table,
                 animals_table,
-                tt_dataset_info["variables"],
+                tt_dataset_info["variables_to_compute"],
                 scale_to_body_length=tt_dataset_info["scale_to_body_length"],
             )
             tr_vars_df = _add_line_and_genotype_info(
@@ -257,29 +266,3 @@ if __name__ == "__main__":
             tr_vars_df.to_pickle(tt_dataset_info["file_path"])
         else:
             tr_vars_df = pd.read_pickle(tt_dataset_info["file_path"])
-
-    # trajectories_table = pd.read_csv(TRAJECTORIES_INDEX_FILE_NAME)
-    # animals_table = pd.read_csv(ANIMALS_INDEX_FILE_PATH)
-
-    # for idx, trajectory in trajectories_table.iterrows():
-    #     animals = animals_table[
-    #         animals_table.trial_uid == trajectory.trial_uid
-    #     ]
-    #     variables = tr_indivs[tr_indivs.trial_uid == trajectory.trial_uid]
-    #     if not variables.empty:
-    #         id_last_fish = trajectory.id_last_fish - 1
-    #         id_first_fish = 0 if id_last_fish == 1 else 1
-    #         genotype_last_fish = variables[
-    #             variables.identity == id_last_fish
-    #         ].genotype.unique()[0]
-    #         genotype_first_fish = variables[
-    #             variables.identity == id_first_fish
-    #         ].genotype.unique()[0]
-    #         genotype_last_fish_ = animals[
-    #             animals.fish_id_exp == 2
-    #         ].genotype.values[0]
-    #         genotype_first_fish_ = animals[
-    #             animals.fish_id_exp == 1
-    #         ].genotype.values[0]
-    #         assert genotype_first_fish == genotype_first_fish_
-    #         assert genotype_last_fish == genotype_last_fish_

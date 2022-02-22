@@ -153,7 +153,9 @@ def generate_videos_table(trajectories_table, animals_table):
         how="left",
     )
     print(videos_table.columns)
-    videos_table.drop(["founder_x", "founder_y", 'replicate'], axis=1, inplace=True)
+    videos_table.drop(
+        ["founder_x", "founder_y", "replicate"], axis=1, inplace=True
+    )
     print(videos_table.columns)
     videos_table["gene"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[0]
@@ -170,6 +172,12 @@ def generate_videos_table(trajectories_table, animals_table):
     )
     videos_table["experiment_type"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[3]
+    )
+    videos_table["line_experiment"] = (
+        videos_table["line"] + "_" + videos_table["experiment_type"]
+    )
+    videos_table["line_replicate_experiment"] = (
+        videos_table["line_replicate"] + "_" + videos_table["experiment_type"]
     )
     videos_table = _add_manually_labeled_id_last_fish(
         videos_table, animals_table

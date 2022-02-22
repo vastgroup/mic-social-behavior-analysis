@@ -2,12 +2,6 @@ import os
 
 import numpy as np
 
-from trajectorytools.export import (
-    GROUP_VARIABLES,
-    INDIVIDUAL_NEIGHBOUR_VARIABLES,
-    INDIVIDUAL_VARIALBES,
-)
-
 # Constants
 SIGMA = 1
 PX_CM = 54
@@ -60,121 +54,6 @@ VIDEOS_TRACKING_STATE_FILE_NAME = os.path.join(
 TR_INDIV_VARS_BOXPLOTS_FILE_PATH = os.path.join(
     GENERATED_FIGURES_PATH, "tr_indiv_vars_boxplots.pdf"
 )
-
-_individual_variables = [
-    var_
-    for var_ in INDIVIDUAL_VARIALBES
-    if not var_["name"]
-    in ["local_polarization", "distance_to_center_of_group"]
-]
-_individual_variables_names = [var_["name"] for var_ in _individual_variables]
-_individual_variables_diff_names = [
-    f"{v}_diff" for v in _individual_variables_names
-]
-_individual_variables_standardized_names = [
-    f"{v}_standardized" for v in _individual_variables_names
-]
-_individual_variables_enhanced_names = (
-    _individual_variables_names
-    + _individual_variables_diff_names
-    + _individual_variables_standardized_names
-)
-
-
-_individual_nb_variables = [
-    var_
-    for var_ in INDIVIDUAL_NEIGHBOUR_VARIABLES
-    if not var_["name"] in ["nb_cos_angle"]
-]
-_individual_nb_variables_names = [
-    var_["name"] for var_ in _individual_nb_variables
-]
-_individual_nb_variables_diff_names = [
-    f"{v}_diff" for v in _individual_nb_variables_names
-]
-_individual_nb_variables_standardized_names = [
-    f"{v}_standardized" for v in _individual_nb_variables_names
-]
-_individual_nb_variables_enhanced_names = (
-    _individual_nb_variables_names
-    + _individual_nb_variables_diff_names
-    + _individual_nb_variables_standardized_names
-)
-
-
-_group_variables = [
-    var_
-    for var_ in GROUP_VARIABLES
-    if var_["name"] != "average_local_polarization"
-]
-_group_variables_names = [var_["name"] for var_ in _group_variables]
-_group_variables_diff_names = [f"{v}_diff" for v in _group_variables_names]
-_group_variables_standardized_names = [
-    f"{v}_standardized" for v in _group_variables_names
-]
-_group_varialbes_enhanced_names = (
-    _group_variables_names
-    + _group_variables_diff_names
-    + _group_variables_standardized_names
-)
-
-all_variables_names = (
-    [v for v in _individual_variables_names]
-    + [v for v in _individual_nb_variables_names]
-    + [v for v in _group_variables_names]
-)
-all_variables_names_enhanced = (
-    _individual_variables_enhanced_names
-    + _individual_nb_variables_enhanced_names
-    + _group_varialbes_enhanced_names
-)
-
-TRAJECTORYTOOLS_DATASETS_INFO = {
-    "tr_indivs": {
-        "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_indiv_vars.pkl"),
-        "variables": _individual_variables,
-        "scale_to_body_length": False,
-        "variables_names": [var_["name"] for var_ in _individual_variables],
-    },
-    "tr_indivs_bl": {
-        "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_indiv_vars_bl.pkl"
-        ),
-        "variables": _individual_variables,
-        "scale_to_body_length": True,
-        "variables_names": [var_["name"] for var_ in _individual_variables],
-    },
-    "tr_indivs_nb": {
-        "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_indiv_nb_vars.pkl"
-        ),
-        "scale_to_body_length": False,
-        "variables": _individual_nb_variables,
-        "variables_names": [var_["name"] for var_ in _individual_nb_variables],
-    },
-    "tr_indivs_nb_bl": {
-        "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_indiv_nb_vars_bl.pkl"
-        ),
-        "scale_to_body_length": True,
-        "variables": _individual_nb_variables,
-        "variables_names": [var_["name"] for var_ in _individual_nb_variables],
-    },
-    "tr_group": {
-        "file_path": os.path.join(GENERATED_TABLES_PATH, "tr_group_vars.pkl"),
-        "scale_to_body_length": False,
-        "variables": _group_variables,
-        "variables_names": [var_["name"] for var_ in _group_variables],
-    },
-    "tr_group_bl": {
-        "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_group_vars_bl.pkl"
-        ),
-        "scale_to_body_length": True,
-        "variables": _group_variables,
-        "variables_names": [var_["name"] for var_ in _group_variables],
-    },
-}
 
 EXPECTED_COLUMNS_IN_SINGLE_ANIMALS_TABLE = {
     "Date": np.object,
@@ -244,11 +123,11 @@ GENOTYPE_GROUP_ORDER = [
 FOCAL_NB_GENOTYPE_ORDER = [
     "WT-WT",
     "WT-HET",
-    "WT-DEL",
     "HET-WT",
+    "WT-DEL",
+    "DEL-WT",
     "HET-HET",
     "HET-DEL",
-    "DEL-WT",
     "DEL-HET",
     "DEL-DEL",
 ]
