@@ -4,9 +4,10 @@ import os
 import numpy as np
 import pandas as pd
 
-from constants import (
+from mic_analysis.constants import (
     ANIMALS_COUNT_FILE_PATH,
     ANIMALS_INDEX_FILE_PATH,
+    EXPERIMENTS_INFO_TABLE,
     GENERATED_TABLES_PATH,
     ID_LAST_FISH_STATE_COLUMNS,
     NO_ID_LAST_FISH_FILL_VALUE,
@@ -25,7 +26,9 @@ from constants import (
 )
 
 
-def _add_manually_labeled_id_last_fish(videos_table, animals_table):
+def _add_manually_labeled_id_last_fish(
+    videos_table, animals_table, experiments_info_table
+):
     # Laura manually labeled the id of the last fish by looking at the
     # trajectories. We recover this info to compare with the automatic label
     # obtained by looking at the number of NaN in the last chunck of the video.
@@ -60,11 +63,27 @@ def _add_manually_labeled_id_last_fish(videos_table, animals_table):
     videos_table["manual_id_last_fish"] = videos_table[
         "manual_id_last_fish"
     ].fillna(NO_ID_LAST_FISH_FILL_VALUE)
-    videos_table["id_last_fish"] = videos_table["id_last_fish"].fillna(
-        NO_ID_LAST_FISH_FILL_VALUE
-    )
+    videos_table["automatic_id_last_fish"] = videos_table[
+        "automatic_id_last_fish"
+    ].fillna(NO_ID_LAST_FISH_FILL_VALUE)
+
+    videos_table["id_last_fish"] = videos_table["automatic_id_last_fish"]
+    for idx, row in experiments_info_table.iterrows():
+        if row.id_genotype_detection == "manual":
+            videos_table.loc[
+                videos_table.experiment_type == str(row.code), "id_last_fish"
+            ] = videos_table.loc[
+                videos_table.experiment_type == str(row.code),
+                "manual_id_last_fish",
+            ]
+            videos_table.loc[
+                videos_table.experiment_type == str(row.code),
+                "certainty_id_last_fish",
+            ] = 1.0
+
     videos_table["same_id_last_fish"] = (
-        videos_table["id_last_fish"] == videos_table["manual_id_last_fish"]
+        videos_table["automatic_id_last_fish"]
+        == videos_table["manual_id_last_fish"]
     )
     return videos_table
 
@@ -138,7 +157,9 @@ def _add_video_quality_state_columns(videos_table):
     return videos_table
 
 
-def generate_videos_table(trajectories_table, animals_table):
+def generate_videos_table(
+    trajectories_table, animals_table, experiments_info_table
+):
     # `animals_table` has information about each animal used in an experiment
     # regardless of whether the videos was tracked or not
     # `trajectories_table` has information about each trajectory of a video
@@ -180,7 +201,7 @@ def generate_videos_table(trajectories_table, animals_table):
         videos_table["line_replicate"] + "_" + videos_table["experiment_type"]
     )
     videos_table = _add_manually_labeled_id_last_fish(
-        videos_table, animals_table
+        videos_table, animals_table, experiments_info_table
     )
     videos_table = _add_video_quality_state_columns(videos_table)
     return videos_table
@@ -198,7 +219,7 @@ def get_tracking_state_table(videos_table):
             "ratio_impossible_speed_jumps",
             "num_impossible_speed_jumps",
             "num_unsolvable_impossible_jumps",
-            "id_last_fish",
+            "automatic_id_last_fish",
             "manual_id_last_fish",
         ]
         + TRACKING_STATE_COLUMNS
@@ -254,7 +275,7 @@ def generate_videos_valid_for_analysis_table(
 
 
 if __name__ == "__main__":
-    from logger import setup_logs
+    from mic_analysis.logger import setup_logs
 
     logger = setup_logs("experiments_summary")
 
@@ -262,10 +283,14 @@ if __name__ == "__main__":
     animals_table = pd.read_csv(ANIMALS_INDEX_FILE_PATH)
     logger.info(f"Loading {TRAJECTORIES_INDEX_FILE_NAME}")
     trajectories_table = pd.read_csv(TRAJECTORIES_INDEX_FILE_NAME)
+    logger.info(f"Loading {EXPERIMENTS_INFO_TABLE}")
+    experiments_info_table = pd.read_csv(EXPERIMENTS_INFO_TABLE)
 
     # A table for all experiments
     logger.info("Creating table of videos from animals and trajectories table")
-    videos_table = generate_videos_table(trajectories_table, animals_table)
+    videos_table = generate_videos_table(
+        trajectories_table, animals_table, experiments_info_table
+    )
     videos_table.to_csv(VIDEOS_INDEX_FILE_NAME, index=False)
 
     # A table with only the information that defines the tracking state
@@ -308,7 +333,7 @@ if __name__ == "__main__":
             "ratio_impossible_speed_jumps",
             "num_impossible_speed_jumps",
             "num_unsolvable_impossible_jumps",
-            "id_last_fish",
+            "automatic_id_last_fish",
             "manual_id_last_fish",
         ]
         + TRACKING_STATE_COLUMNS

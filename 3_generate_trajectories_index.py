@@ -11,12 +11,12 @@ import pandas as pd
 import seaborn as sns
 import trajectorytools as tt
 
-from constants import (
+from mic_analysis.constants import (
     NUM_FRAMES_FOR_ANALYSIS,
     TRACKING_DATA_FOLDER_PATH,
     TRAJECTORIES_INDEX_FILE_NAME,
 )
-from utils import clean_impossible_speed_jumps
+from mic_analysis.utils import clean_impossible_speed_jumps
 
 
 def info_from_video_path(
@@ -120,12 +120,12 @@ def get_info_id_last_animal(
     if np.all(~np.isnan(ratio_frames_ids_visible_alone)):
         assert np.sum(ratio_frames_ids_visible_alone) == 1
         index_last_id = np.argmax(ratio_frames_ids_visible_alone)
-        info_id_last_animal["id_last_fish"] = index_last_id + 1
+        info_id_last_animal["automatic_id_last_fish"] = index_last_id + 1
         info_id_last_animal[
             "certainty_id_last_fish"
         ] = ratio_frames_ids_visible_alone[index_last_id]
     else:
-        info_id_last_animal["id_last_fish"] = 0
+        info_id_last_animal["automatic_id_last_fish"] = 0
 
     return info_id_last_animal
 
@@ -233,7 +233,7 @@ def get_info_from_trajectory_object(tr):
 
 
 if __name__ == "__main__":
-    from logger import setup_logs
+    from mic_analysis.logger import setup_logs
 
     logger = setup_logs("trajectories_index")
 

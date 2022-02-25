@@ -20,6 +20,9 @@ GENERATED_FIGURES_PATH = os.path.join(DATA_DIR, "generated_figures")
 
 # Conversion table from old to new names
 CONVERSIONS_TABLE_PATH = os.path.join(DATA_DIR, "Conversions.csv")
+# Experiments info table
+
+EXPERIMENTS_INFO_TABLE = os.path.join(DATA_DIR, "Data_structure.csv")
 
 # Animals
 EXPERIMENTS_DATA_FOLDER_PATH = os.path.join(DATA_DIR, "Social_Experiments")
@@ -49,6 +52,7 @@ VIDEOS_VALID_FOR_ANALYSIS_FILE_PATH = os.path.join(
 VIDEOS_TRACKING_STATE_FILE_NAME = os.path.join(
     GENERATED_TABLES_PATH, "videos_tracking_state.csv"
 )
+
 
 # Trajectorytools variables
 TR_INDIV_VARS_BOXPLOTS_FILE_PATH = os.path.join(
@@ -119,6 +123,8 @@ GENOTYPE_GROUP_ORDER = [
     "HET_DEL",
     "DEL_DEL",
     "WT_DEL",
+    "WT_WT_WT_WT_WT",
+    "DEL_DEL_DEL_DEL_DEL",
 ]
 FOCAL_NB_GENOTYPE_ORDER = [
     "WT-WT",
@@ -142,6 +148,8 @@ GENOTYPE_GROUP_GENOTYPE_ORDER = [
     "DEL_DEL-DEL",
     "WT_DEL-DEL",
     "WT_DEL-WT",
+    "WT_WT_WT_WT_WT-WT",
+    "DEL_DEL_DEL_DEL_DEL-DEL",
 ]
 
 PER_FISH_COLUMNS = [
@@ -183,7 +191,7 @@ TRACKING_STATE_COLUMNS = [
 ID_LAST_FISH_STATE_COLUMNS = [
     "valid_id_last_fish",
     "valid_certainty_id_last_fish",
-    "same_id_last_fish",
+    # "same_id_last_fish",
 ]
 
 FOR_ANALYDID_COLUMNS = TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS
@@ -209,6 +217,8 @@ COLORS = {
     "DEL_DEL-DEL": "r",
     "WT_DEL-DEL": "k",
     "WT_DEL-WT": "k",
+    "WT_WT_WT_WT_WT-WT": "k",
+    "DEL_DEL_DEL_DEL_DEL-DEL": "k",
     "HET": "b",
     "DEL": "r",
     "HET_HET": "b",
@@ -217,4 +227,6 @@ COLORS = {
     "WT_WT": "k",
     "WT_HET": "k",
     "WT_DEL": "k",
+    "WT_WT_WT_WT_WT": "k",
+    "DEL_DEL_DEL_DEL_DEL": "k",
 }

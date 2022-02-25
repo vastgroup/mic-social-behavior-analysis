@@ -7,9 +7,7 @@ import numpy as np
 import pandas as pd
 from pandas._libs import missing
 
-logger = Logger(__name__)
-
-from constants import (
+from mic_analysis.constants import (
     ANIMALS_COUNT_FILE_PATH,
     ANIMALS_INDEX_FILE_PATH,
     ANIMALS_INDEX_REPORT_FILE_PATH,
@@ -20,7 +18,7 @@ from constants import (
     RENAMING_CONVERSION_TABLE,
     RENAMING_SINGLE_ANIMALS_TABLE,
 )
-from utils import get_files_with_pattern, read_csv
+from mic_analysis.utils import get_files_with_pattern, read_csv
 
 
 def drop_unnecessary_rows_columns(df: pd.DataFrame):
@@ -86,7 +84,8 @@ def correct_data_types(df: pd.DataFrame):
             elif column == "fish_ID_track":
                 df[column] = df[column].apply(
                     lambda x: float(x)
-                    if isinstance(x, str) and x[-1].isnumeric()
+                    if (isinstance(x, str) and x[-1].isnumeric())
+                    or isinstance(x, (int, float, complex))
                     else np.nan
                 )
                 logger.info(
@@ -164,7 +163,7 @@ def add_extra_columns(df, animals_table_path):
 
 
 if __name__ == "__main__":
-    from logger import setup_logs
+    from mic_analysis.logger import setup_logs
 
     logger = setup_logs("animals_index")
 
@@ -197,7 +196,6 @@ if __name__ == "__main__":
         df = add_extra_columns(df, animals_table_path)
         animals_tables.append(df)
         animals_tables_reports.append(animals_table_report)
-        
 
     animals_table = pd.concat(animals_tables).reset_index(drop=True)
     animals_table_report = pd.DataFrame(animals_tables_reports)

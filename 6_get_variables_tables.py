@@ -10,7 +10,7 @@ import pandas as pd
 from tqdm import tqdm
 
 import trajectorytools as tt
-from constants import (
+from mic_analysis.constants import (
     ANIMALS_INDEX_FILE_PATH,
     FRAME_RATE,
     NUM_FRAMES_FOR_ANALYSIS,
@@ -18,11 +18,11 @@ from constants import (
     SIGMA,
     TRACKING_DATA_FOLDER_PATH,
     TRAJECTORIES_INDEX_FILE_NAME,
-    TRAJECTORYTOOLS_DATASETS_INFO,
     VIDEOS_INDEX_FILE_NAME,
 )
+from mic_analysis.datasets import TRAJECTORYTOOLS_DATASETS_INFO
+from mic_analysis.utils import clean_impossible_speed_jumps
 from trajectorytools.export import tr_variables_to_df
-from utils import clean_impossible_speed_jumps
 
 
 def _speed(trajectories):
@@ -187,22 +187,34 @@ def _generate_variables_table(
         desc="generating_dataframes",
         total=len(videos_table),
     ):
-        if tr_row.tracked and tr_row.valid_for_analysis:
+
+        # force_valid = False
+        # if isinstance(tr_row.abs_trajectory_path, str) and (
+        #     "srrm3_17_1_3" in tr_row.abs_trajectory_path
+        # ):
+        #     force_valid = True
+        if tr_row.tracked and tr_row.valid_for_analysis:  # or force_valid:
             animals = animals_table[
                 animals_table.trial_uid == tr_row.trial_uid
             ]
-            mean_size = np.mean(animals.size_cm)
-            if np.isnan(mean_size):
+            mean_size_cm = np.mean(animals.size_cm)
+            if np.isnan(mean_size_cm):
                 logger.info(
                     "Getting mean size_cm from all videos of same gene"
                 )
-                mean_size = animals_table[
+                mean_size_cm = animals_table[
                     (animals_table.gene == tr_row.gene)
                     & (animals_table.founder == tr_row.founder)
                     & (animals_table.replicate == tr_row.replicate)
+                    & (animals_table.experiment_type == tr_row.experiment_type)
                 ].size_cm.mean()
+                if np.isnan(mean_size_cm):
+                    logger.info(
+                        "Getting min size_cm from body_length idtracker.ai info"
+                    )
+                    mean_size_cm = tr_row.body_length / PX_CM
             if scale_to_body_length:
-                length_unit = PX_CM * mean_size
+                length_unit = PX_CM * mean_size_cm
                 length_unit_name = "BL"
             else:
                 length_unit = PX_CM
@@ -238,7 +250,7 @@ def _generate_variables_table(
 
 if __name__ == "__main__":
 
-    from logger import setup_logs
+    from mic_analysis.logger import setup_logs
 
     logger = setup_logs("get_variables_tables")
 

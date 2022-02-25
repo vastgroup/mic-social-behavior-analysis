@@ -1,6 +1,8 @@
 import logging
 import os
+from pprint import pprint
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -34,6 +36,8 @@ from .utils import _select_partition_from_datasets, circmean, circstd
 from .variables import all_variables_names, all_variables_names_enhanced
 
 logger = logging.getLogger(__name__)
+
+mpl.rcParams["pdf.fonttype"] = 42
 
 
 def _add_num_data_points(
@@ -280,7 +284,6 @@ def boxplot_variables_partition(
     all_outliers = []
 
     for i, (ax, variable) in enumerate(zip(axs, variables)):
-        print(f"variable {variable}:")
         boxplot_kwargs.update({"y": variable})
         var_stats, outliers, var_ylim = _boxplots_one_variable_with_stats(
             ax,
@@ -921,7 +924,7 @@ def _prepare_partition_indiv_nb_vars_summary_fig(
 
 
 ##### AXES PLOTTERS
-def plot_order_parameter_dist(data, ax=None):
+def _plot_order_parameter_dist(data, ax=None):
     x_var = "rotation_order_parameter"
     y_var = "polarization_order_parameter"
     if ax is None:
@@ -942,7 +945,7 @@ def plot_order_parameter_dist(data, ax=None):
     sns.despine(ax=ax)
 
 
-def plot_relative_position_dist(data, ax=None):
+def _plot_relative_position_dist(data, ax=None):
     x_var = "nb_position_x"
     y_var = "nb_position_y"
     if ax is None:
@@ -968,7 +971,7 @@ def plot_relative_position_dist(data, ax=None):
     sns.despine(ax=ax)
 
 
-def plot_trajectory(
+def _plot_trajectory(
     data, ax=None, hue=None, show_trajectories=True, x_var="s_x", y_var="s_y"
 ):
     if ax is None:
@@ -1000,7 +1003,7 @@ def plot_trajectory(
     sns.despine(ax=ax)
 
 
-def plot_variable_along_time(
+def _plot_variable_along_time(
     data, variable, ax=None, hue=None, units=None, estimator=None, legend=True
 ):
     if ax is None:
@@ -1051,7 +1054,7 @@ def plot_variable_along_time(
     sns.despine(ax=ax)
 
 
-def plot_variable_1d_distribution(
+def _plot_variable_1d_dist(
     data, variable, variables_ranges, ax=None, hue=None, legend=None, how="h"
 ):
     bin_range = (
@@ -1104,11 +1107,11 @@ def plot_variable_1d_distribution(
     sns.despine(ax=ax)
 
 
-def plot_positions_dist_per_genotype_group(data, axs):
+def _plot_positions_dist_per_genotype_group(data, axs):
     genotype_groups = data["genotype_group"].unique()
     for i, (genotype_group, ax) in enumerate(zip(genotype_groups, axs)):
         sub_data = data[data.genotype_group == genotype_group]
-        plot_trajectory(
+        _plot_trajectory(
             sub_data,
             ax,
             show_trajectories=False,
@@ -1116,7 +1119,7 @@ def plot_positions_dist_per_genotype_group(data, axs):
             y_var="s_y_normed",
         )
         ax.set_title(genotype_group)
-    plot_trajectory(
+    _plot_trajectory(
         data,
         axs[i + 1],
         show_trajectories=False,
@@ -1126,13 +1129,13 @@ def plot_positions_dist_per_genotype_group(data, axs):
     axs[i + 1].set_title("all")
 
 
-def plot_order_parameter_dist_per_genotype_group(data, axs):
+def _plot_order_parameter_dist_per_genotype_group(data, axs):
     genotype_groups = data["genotype_group"].unique()
     for i, (genotype_group, ax) in enumerate(zip(genotype_groups, axs)):
         sub_data = data[data.genotype_group == genotype_group]
-        plot_order_parameter_dist(sub_data, ax)
+        _plot_order_parameter_dist(sub_data, ax)
         ax.set_title(genotype_group)
-    plot_order_parameter_dist(data, axs[i + 1])
+    _plot_order_parameter_dist(data, axs[i + 1])
     axs[i + 1].set_title("all")
     if i + 1 < len(axs) - 1:
         # is not the last axes
@@ -1201,12 +1204,12 @@ def _plot_animal_indiv_vars_summary(
         axs_variables,
         axs_distributions,
     ) = _prepare_animal_indiv_vars_fig(len(variables))
-    plot_trajectory(data, ax=ax_trajectories, hue=hue)
+    _plot_trajectory(data, ax=ax_trajectories, hue=hue)
     for variable, ax_time, ax_dist in zip(
         variables, axs_variables, axs_distributions
     ):
-        plot_variable_along_time(data, variable, ax=ax_time, hue=hue)
-        plot_variable_1d_distribution(
+        _plot_variable_along_time(data, variable, ax=ax_time, hue=hue)
+        _plot_variable_1d_dist(
             data, variable, variables_ranges, ax=ax_dist, hue=hue
         )
     return fig
@@ -1221,12 +1224,12 @@ def _plot_video_indiv_vars_summary(
         axs_variables,
         axs_distributions,
     ) = _prepare_animal_indiv_vars_fig(len(variables))
-    plot_trajectory(data, ax=ax_trajectories, hue=hue)
+    _plot_trajectory(data, ax=ax_trajectories, hue=hue)
     for variable, ax_time, ax_dist in zip(
         variables, axs_variables, axs_distributions
     ):
-        plot_variable_along_time(data, variable, ax=ax_time, hue=hue)
-        plot_variable_1d_distribution(
+        _plot_variable_along_time(data, variable, ax=ax_time, hue=hue)
+        _plot_variable_1d_dist(
             data, variable, variables_ranges, ax=ax_dist, hue=hue
         )
     return fig
@@ -1239,14 +1242,12 @@ def _plot_group_variables_summary(data, variables, variables_ranges):
         axs_variables,
         axs_distributions,
     ) = _prepare_video_group_fig(len(variables))
-    plot_order_parameter_dist(data, ax=ax_order_params)
+    _plot_order_parameter_dist(data, ax=ax_order_params)
     for variable, ax_time, ax_dist in zip(
         variables, axs_variables, axs_distributions
     ):
-        plot_variable_along_time(data, variable, ax=ax_time)
-        plot_variable_1d_distribution(
-            data, variable, variables_ranges, ax=ax_dist
-        )
+        _plot_variable_along_time(data, variable, ax=ax_time)
+        _plot_variable_1d_dist(data, variable, variables_ranges, ax=ax_dist)
     return fig
 
 
@@ -1257,14 +1258,14 @@ def _plot_video_indiv_nb_variables_summary(data, variables, variables_ranges):
         axs_variables,
         axs_distributions,
     ) = _prepare_video_indiv_nb_fig(len(variables))
-    plot_relative_position_dist(data, ax=ax_order_params)
+    _plot_relative_position_dist(data, ax=ax_order_params)
     for variable, ax_time, ax_dist in zip(
         variables, axs_variables, axs_distributions
     ):
-        plot_variable_along_time(
+        _plot_variable_along_time(
             data, variable, ax=ax_time, hue="genotype_nb", units="identity_nb"
         )
-        plot_variable_1d_distribution(
+        _plot_variable_1d_dist(
             data, variable, variables_ranges, ax=ax_dist, hue="genotype_nb"
         )
     return fig
@@ -1284,14 +1285,14 @@ def _plot_partition_indiv_vars_summary(
     ) = _prepare_partition_indiv_vars_summary_fig(
         len(variables_stats), num_genotype_groups
     )
-    plot_positions_dist_per_genotype_group(data, axs=axs_positions_dist)
+    _plot_positions_dist_per_genotype_group(data, axs=axs_positions_dist)
     num_data_points = _get_num_data_points(data_stats, boxplot_kwargs)
     for i, (variable, ax_dist) in enumerate(zip(variables, axs_distributions)):
         if i == 0:
             legend = True
         else:
             legend = False
-        plot_variable_1d_distribution(
+        _plot_variable_1d_dist(
             data,
             variable,
             variables_ranges,
@@ -1376,14 +1377,14 @@ def _plot_partition_group_vars_summary(
     ) = _prepare_partition_group_vars_summary_fig(
         len(variables_stats), num_genotype_groups
     )
-    plot_order_parameter_dist_per_genotype_group(data, axs_order_params_dist)
+    _plot_order_parameter_dist_per_genotype_group(data, axs_order_params_dist)
     num_data_points = _get_num_data_points(data_stats, boxplot_kwargs_group)
     for i, (variable, ax_dist) in enumerate(zip(variables, axs_distributions)):
         if i == 0:
             legend = True
         else:
             legend = False
-        plot_variable_1d_distribution(
+        _plot_variable_1d_dist(
             data,
             variable,
             variables_ranges,
@@ -1475,7 +1476,7 @@ def _plot_partition_indiv_nb_summary(
             legend = True
         else:
             legend = False
-        plot_variable_1d_distribution(
+        _plot_variable_1d_dist(
             data,
             variable,
             variables_ranges,
@@ -1546,7 +1547,12 @@ def _plot_partition_indiv_nb_summary(
 
 
 def plot_summary_animal(
-    datasets, animal_col, animal_uid, variables_ranges, save=False
+    datasets,
+    animal_col,
+    animal_uid,
+    variables_ranges,
+    save=False,
+    save_path=".",
 ):
     datasets_partition = _select_partition_from_datasets(
         datasets, ["data_indiv"], animal_col, animal_uid
@@ -1560,12 +1566,18 @@ def plot_summary_animal(
     )
     fig.suptitle(animal_info_str)
     if save:
-        fig.savefig(f"{animal_uid}.png")
-        fig.savefig(f"{animal_uid}.pdf")
+        fig.savefig(os.path.join(save_path, f"{animal_uid}.png"))
+        fig.savefig(os.path.join(save_path, f"{animal_uid}.pdf"))
 
 
 def plot_summary_video(
-    datasets, video_col, video_uid, animal_col, variables_ranges, save=False
+    datasets,
+    video_col,
+    video_uid,
+    animal_col,
+    variables_ranges,
+    save=False,
+    save_path=".",
 ):
     datasets_partition = _select_partition_from_datasets(
         datasets,
@@ -1575,7 +1587,6 @@ def plot_summary_video(
     )
 
     video_info_str = get_video_info_str(datasets_partition["data_indiv"])
-    print(video_info_str)
     fig = _plot_video_indiv_vars_summary(
         datasets_partition["data_indiv"],
         INDIVIDUAL_VARIABLES_TO_PLOT,
@@ -1584,16 +1595,18 @@ def plot_summary_video(
     )
     fig.suptitle(video_info_str)
     if save:
-        fig.savefig(f"{video_uid}_indiv.png")
-        fig.savefig(f"{video_uid}_indiv.pdf")
+        fig.savefig(os.path.join(save_path, f"{video_uid}_indiv.png"))
+        fig.savefig(os.path.join(save_path, f"{video_uid}_indiv.pdf"))
 
     fig = _plot_group_variables_summary(
-        datasets_partition["data_group"], GROUP_VARIABLES_TO_PLOT, variables_ranges
+        datasets_partition["data_group"],
+        GROUP_VARIABLES_TO_PLOT,
+        variables_ranges,
     )
     fig.suptitle(video_info_str)
     if save:
-        fig.savefig(f"{video_uid}_group.png")
-        fig.savefig(f"{video_uid}_group.pdf")
+        fig.savefig(os.path.join(save_path, f"{video_uid}_group.png"))
+        fig.savefig(os.path.join(save_path, f"{video_uid}_group.pdf"))
 
     for animal_uid in datasets_partition["data_indiv_nb"][animal_col].unique():
         animal_nb_data = datasets_partition["data_indiv_nb"][
@@ -1605,8 +1618,8 @@ def plot_summary_video(
         focal_nb_info_str = get_focal_nb_info(animal_nb_data)
         fig.suptitle(focal_nb_info_str)
         if save:
-            fig.savefig(f"{animal_uid}_indiv_nb.png")
-            fig.savefig(f"{animal_uid}_indiv_nb.pdf")
+            fig.savefig(os.path.join(save_path, f"{animal_uid}_indiv_nb.png"))
+            fig.savefig(os.path.join(save_path, f"{animal_uid}_indiv_nb.pdf"))
 
 
 def plot_summary_partition(
@@ -1615,6 +1628,7 @@ def plot_summary_partition(
     partition_uid,
     variables_ranges,
     save=False,
+    save_path=".",
 ):
     datasets_partition = _select_partition_from_datasets(
         datasets,
@@ -1643,8 +1657,8 @@ def plot_summary_partition(
     )
     fig.suptitle(line_replicate_info_str)
     if save:
-        fig.savefig(f"{partition_uid}_indiv.png")
-        fig.savefig(f"{partition_uid}_indiv.pdf")
+        fig.savefig(os.path.join(save_path, f"{partition_uid}_indiv.png"))
+        fig.savefig(os.path.join(save_path, f"{partition_uid}_indiv.pdf"))
 
     fig = _plot_partition_group_vars_summary(
         datasets_partition["data_group"],
@@ -1656,8 +1670,8 @@ def plot_summary_partition(
     )
     fig.suptitle(line_replicate_info_str)
     if save:
-        fig.savefig(f"{partition_uid}_group.png")
-        fig.savefig(f"{partition_uid}_group.pdf")
+        fig.savefig(os.path.join(save_path, f"{partition_uid}_group.png"))
+        fig.savefig(os.path.join(save_path, f"{partition_uid}_group.pdf"))
 
     fig = _plot_partition_indiv_nb_summary(
         datasets_partition["data_indiv_nb"],
@@ -1669,9 +1683,8 @@ def plot_summary_partition(
     )
     fig.suptitle(line_replicate_info_str)
     if save:
-        fig.savefig(f"{partition_uid}_indiv_nb.png")
-        fig.savefig(f"{partition_uid}_indiv_nb.pdf")
-
+        fig.savefig(os.path.join(save_path, f"{partition_uid}_indiv_nb.png"))
+        fig.savefig(os.path.join(save_path, f"{partition_uid}_indiv_nb.pdf"))
 
 
 def plot_variables_partition_summary(path_with_data, variables=variables):

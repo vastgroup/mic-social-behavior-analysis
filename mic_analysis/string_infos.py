@@ -24,8 +24,11 @@ def _get_info(data, info_cols):
     for info_col in info_cols:
         assert info_col in data.columns
         infos = data[info_col].unique()
-        assert len(set(infos)) == 1, set(infos)
-        info = str(infos[0])
+        # assert len(set(infos)) == 1, (info_col, set(infos))
+        if len(set(infos)) == 1:
+            info = str(infos[0])
+        else:
+            info = str(infos)
         info_str += f"{info_col}: {info} - "
     info_str = info_str[:-3]
     return info_str
