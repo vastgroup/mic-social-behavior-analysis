@@ -9,7 +9,7 @@ from mic_analysis.variables import (
     all_variables_names_enhanced,
     compute_variables_ranges,
 )
-from natsort import nasorted
+from natsort import natsorted
 
 filters = [
     lambda x: x.experiment_type == 1,
