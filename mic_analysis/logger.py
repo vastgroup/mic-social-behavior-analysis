@@ -1,8 +1,8 @@
 import logging
 import datetime
-from .constants import DEFAULT_LOG_FILENAME, DEFAULT_FILE_FORMATTER, DEFAULT_SCREEN_FORMATTER
+from confapp import conf
 
-def setup_logs(log_filename=DEFAULT_LOG_FILENAME):
+def setup_logs(log_filename=conf.DEFAULT_LOG_FILENAME):
     # crating root logger
     logger = logging.getLogger("")
     # fix for double logs. To be removed when solved upstream (pytorch lightning)
@@ -13,7 +13,7 @@ def setup_logs(log_filename=DEFAULT_LOG_FILENAME):
     log_filename = f"{log_filename}_{datetag}.log"
     logging.basicConfig(
         level=logging.DEBUG,
-        format=DEFAULT_FILE_FORMATTER,
+        format=conf.DEFAULT_FILE_FORMATTER,
         datefmt="%m-%d %H:%M",
         filename=log_filename,
         filemode="w",
@@ -22,7 +22,7 @@ def setup_logs(log_filename=DEFAULT_LOG_FILENAME):
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # # set a format which is simpler for console use
-    # formatter = coloredlogs.ColoredFormatter(DEFAULT_SCREEN_FORMATTER)
+    # formatter = coloredlogs.ColoredFormatter(conf.DEFAULT_SCREEN_FORMATTER)
     # # tell the handler to use this format
     # console.setFormatter(formatter)
     # console.addFilter(OwnModulesFilter())

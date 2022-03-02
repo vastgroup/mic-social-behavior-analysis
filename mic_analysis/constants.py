@@ -1,30 +1,33 @@
 import os
 
 import numpy as np
+from mlxtend.evaluate import permutation_test
 
-# Constants
+from mic_analysis.utils import circmean, circstd, ratio_in_front
+
+# TRAJECTORIES CONSTANTS
 SIGMA = 1
 PX_CM = 54
 FRAME_RATE = 29
 
+# LOGGERS CONSTANTS
 DEFAULT_LOG_FILENAME = "log"
 DEFAULT_SCREEN_FORMATTER = "%(name)-12s: %(levelname)-8s %(message)s"
 DEFAULT_FILE_FORMATTER = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
 
-# Main data dir
-DATA_DIR = os.environ.get("IRIMIA_LAB_ANALYSIS_SOCIAL_DATA_DIR", None)
-
+# MAIN DIRECTORY WHERE DATA IS STORED
+# Absolute path to the local folder /ZFISH_MICs/_BSocial/2022_ANALYSIS_social
+# that can be sync/downlowaded from Dropbox
+DATA_DIR = os.environ["DATA_DIR"]
 # GENERATED TABLES AND FIGURES
 GENERATED_TABLES_PATH = os.path.join(DATA_DIR, "generated_tables")
 GENERATED_FIGURES_PATH = os.path.join(DATA_DIR, "generated_figures")
-
 # Conversion table from old to new names
 CONVERSIONS_TABLE_PATH = os.path.join(DATA_DIR, "Conversions.csv")
 # Experiments info table
-
 EXPERIMENTS_INFO_TABLE = os.path.join(DATA_DIR, "Data_structure.csv")
 
-# Animals
+# Animals information
 EXPERIMENTS_DATA_FOLDER_PATH = os.path.join(DATA_DIR, "Social_Experiments")
 ANIMALS_INDEX_FILE_PATH = os.path.join(
     GENERATED_TABLES_PATH, "animals_index.csv"
@@ -36,13 +39,13 @@ ANIMALS_COUNT_FILE_PATH = os.path.join(
     GENERATED_TABLES_PATH, "animals_counts.csv"
 )
 
-# Trajectories
+# Trajectories information
 TRACKING_DATA_FOLDER_PATH = os.path.join(DATA_DIR, "Social_DATA")
 TRAJECTORIES_INDEX_FILE_NAME = os.path.join(
     GENERATED_TABLES_PATH, "trajectories_index.csv"
 )
 
-# Experiments
+# Experiments information
 VIDEOS_INDEX_FILE_NAME = os.path.join(
     GENERATED_TABLES_PATH, "videos_index.csv"
 )
@@ -53,12 +56,7 @@ VIDEOS_TRACKING_STATE_FILE_NAME = os.path.join(
     GENERATED_TABLES_PATH, "videos_tracking_state.csv"
 )
 
-
-# Trajectorytools variables
-TR_INDIV_VARS_BOXPLOTS_FILE_PATH = os.path.join(
-    GENERATED_FIGURES_PATH, "tr_indiv_vars_boxplots.pdf"
-)
-
+#
 EXPECTED_COLUMNS_IN_SINGLE_ANIMALS_TABLE = {
     "Date": np.object,
     "Line": np.object,
@@ -103,6 +101,8 @@ GENOTYPE_CONVERSION_DICT = {
     "-_WT": "WT_-",
     "-_HET": "HET_-",
     "-_DEL": "DEL_-",
+    "WT_WT_WT_WT_WT": "5WT",
+    "DEL_DEL_DEL_DEL_DEL": "5DEL",
 }
 
 VALID_GENOTYPES = [
@@ -112,8 +112,8 @@ VALID_GENOTYPES = [
     "WT_WT",
     "WT_DEL",
     "WT_HET",
-    "WT_WT_WT_WT_WT",
-    "DEL_DEL_DEL_DEL_DEL",
+    "5WT",
+    "5DEL",
 ]
 
 GENOTYPE_GROUP_ORDER = [
@@ -123,8 +123,8 @@ GENOTYPE_GROUP_ORDER = [
     "HET_DEL",
     "DEL_DEL",
     "WT_DEL",
-    "WT_WT_WT_WT_WT",
-    "DEL_DEL_DEL_DEL_DEL",
+    "5WT",
+    "5DEL",
 ]
 FOCAL_NB_GENOTYPE_ORDER = [
     "WT-WT",
@@ -148,8 +148,8 @@ GENOTYPE_GROUP_GENOTYPE_ORDER = [
     "DEL_DEL-DEL",
     "WT_DEL-DEL",
     "WT_DEL-WT",
-    "WT_WT_WT_WT_WT-WT",
-    "DEL_DEL_DEL_DEL_DEL-DEL",
+    "5WT-WT",
+    "5DEL-DEL",
 ]
 
 PER_FISH_COLUMNS = [
@@ -198,7 +198,7 @@ FOR_ANALYDID_COLUMNS = TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS
 
 NO_ID_LAST_FISH_FILL_VALUE = 0
 
-THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS = 20
+THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS = 1
 THRESHOLD_MEAN_ID_PROBABILITIES = 0.99
 THRESHOLD_ACCURACY = 0.98
 THRESHOLD_RATIO_TRACKED = 0.98
@@ -217,8 +217,8 @@ COLORS = {
     "DEL_DEL-DEL": "r",
     "WT_DEL-DEL": "k",
     "WT_DEL-WT": "k",
-    "WT_WT_WT_WT_WT-WT": "k",
-    "DEL_DEL_DEL_DEL_DEL-DEL": "k",
+    "5WT-WT": "k",
+    "5DEL-DEL": "k",
     "HET": "b",
     "DEL": "r",
     "HET_HET": "b",
@@ -227,6 +227,217 @@ COLORS = {
     "WT_WT": "k",
     "WT_HET": "k",
     "WT_DEL": "k",
-    "WT_WT_WT_WT_WT": "k",
-    "DEL_DEL_DEL_DEL_DEL": "k",
+    "5WT": "k",
+    "5DEL": "k",
 }
+
+
+# Variables
+INDIVIDUAL_VARIALBES_TO_DISCARD = [
+    "local_polarization",
+    "distance_to_center_of_group",
+]
+INDIVIDUAL_NB_VARIALBES_TO_DISCARD = ["nb_cos_angle"]
+GROUP_VARIABLES_TO_DISCARD = ["average_local_polarization"]
+
+
+# Stats
+AGGREGATION_STATS = {
+    "default": ["median", "mean", "std"],
+    "distance_travelled": ["max"],
+    "nb_angle": [ratio_in_front, circmean, circstd],
+}
+AGGREGATION_COLUMNS = {
+    "indiv": [
+        "trial_uid",
+        "identity",
+        "genotype_group",
+        "genotype",
+        "line",
+        "line_replicate",
+        "line_experiment",
+        "line_replicate_experiment",
+        "experiment_type",
+    ],
+    "group": [
+        "trial_uid",
+        "genotype_group",
+        "line",
+        "line_replicate",
+        "line_experiment",
+        "line_replicate_experiment",
+        "experiment_type",
+    ],
+    "indiv_nb": [
+        "trial_uid",
+        "identity",
+        "identity_nb",
+        "genotype_group",
+        "genotype",
+        "genotype_nb",
+        "line",
+        "line_replicate",
+        "line_experiment",
+        "line_replicate_experiment",
+        "experiment_type",
+        "focal_nb_genotype",
+    ],
+}
+TEST_PAIRS_GROUPS = {
+    "indiv": [
+        {"pair": (("WT_HET-WT"), ("WT_HET-HET")), "level": 0},
+        {"pair": (("HET_DEL-HET"), ("HET_DEL-DEL")), "level": 0},
+        {"pair": (("WT_DEL-WT"), ("WT_DEL-DEL")), "level": 1},
+        {"pair": (("WT_WT-WT"), ("WT_HET-WT")), "level": 1},
+        {"pair": (("WT_HET-HET"), ("HET_HET-HET")), "level": 2},
+        {"pair": (("HET_HET-HET"), ("HET_DEL-HET")), "level": 3},
+        {"pair": (("HET_DEL-DEL"), ("DEL_DEL-DEL")), "level": 3},
+        {"pair": (("DEL_DEL-DEL"), ("WT_DEL-DEL")), "level": 4},
+        {"pair": (("WT_WT-WT"), ("HET_HET-HET")), "level": 4},
+        {"pair": (("HET_HET-HET"), ("DEL_DEL-DEL")), "level": 5},
+        {"pair": (("WT_WT-WT"), ("DEL_DEL-DEL")), "level": 6},
+        {"pair": (("WT_WT-WT"), ("WT_DEL-WT")), "level": 7},
+        {"pair": (("5WT-WT"), ("5DEL-DEL")), "level": 8},
+    ],
+    "group": [
+        {"pair": ("HET_HET", "HET_DEL"), "level": 0},
+        {"pair": ("WT_WT", "WT_HET"), "level": 0},
+        {"pair": ("DEL_DEL", "WT_DEL"), "level": 0},
+        {"pair": ("WT_HET", "HET_HET"), "level": 1},
+        {"pair": ("HET_DEL", "DEL_DEL"), "level": 1},
+        {"pair": ("WT_WT", "HET_HET"), "level": 2},
+        {"pair": ("HET_HET", "DEL_DEL"), "level": 3},
+        {"pair": ("WT_WT", "DEL_DEL"), "level": 3},
+        {"pair": ("5WT", "5DEL"), "level": 4},
+    ],
+    "indiv_nb": [
+        {"pair": ("WT-WT", "WT-HET"), "level": 0},
+        {"pair": ("WT-HET", "WT-DEL"), "level": 1},
+        {"pair": ("WT-WT", "WT-DEL"), "level": 2},
+        {"pair": ("HET-WT", "HET-HET"), "level": 0},
+        {"pair": ("HET-HET", "HET-DEL"), "level": 1},
+        {"pair": ("HET-WT", "HET-DEL"), "level": 2},
+        {"pair": ("DEL-WT", "DEL-HET"), "level": 0},
+        {"pair": ("DEL-HET", "DEL-DEL"), "level": 1},
+        {"pair": ("DEL-WT", "DEL-DEL"), "level": 2},
+        {"pair": ("WT-HET", "HT-WT"), "level": 3},
+        {"pair": ("HET-DEL", "DEL-HET"), "level": 3},
+        {"pair": ("WT-DEL", "DEL-WT"), "level": 4},
+        {"pair": ("WT-WT", "DEL-DEL"), "level": 5},
+        {"pair": ("HET-HET", "DEL-DEL"), "level": 6},
+    ],
+}
+PAIRS_OF_GROUPS = (
+    TEST_PAIRS_GROUPS["indiv"]
+    + TEST_PAIRS_GROUPS["indiv_nb"]
+    + TEST_PAIRS_GROUPS["group"]
+)
+# This are arguments to the permutation_test function in the mlxtend python library
+MEAN_STATS_KWARGS = {
+    "method": "approximate",
+    "num_rounds": 10000,
+    "func": "mean",
+    "paired": False,
+}
+MEDIAN_STATS_KWARGS = {
+    "method": "approximate",
+    "num_rounds": 10000,
+    "func": "median",
+    "paired": False,
+}
+MEAN_STATS_CONFIG = {
+    "test_func": permutation_test,
+    "test_func_kwargs": MEAN_STATS_KWARGS,
+}
+MEDIAN_STATS_CONFIG = {
+    "test_func": permutation_test,
+    "test_func_kwargs": MEDIAN_STATS_KWARGS,
+}
+
+
+# PLOTS
+INDIVIDUAL_VARIABLES_TO_PLOT = [
+    "normed_distance_to_origin",
+    "speed",
+    "normal_acceleration",
+]
+INDIVIDUAL_VARIABLES_STATS_TO_PLOT = [
+    ("normed_distance_to_origin", "median"),
+    ("normed_distance_to_origin", "mean"),
+    ("normed_distance_to_origin", "std"),
+    ("speed", "median"),
+    ("speed", "mean"),
+    ("speed", "std"),
+    ("normal_acceleration", "median"),
+    ("normal_acceleration", "mean"),
+    ("normal_acceleration", "std"),
+]
+
+GROUP_VARIABLES_TO_PLOT = [
+    "mean_distance_to_center_of_group",
+    "polarization_order_parameter",
+    "rotation_order_parameter",
+]
+GROUP_VARIABLES_STATS_TO_PLOT = [
+    ("mean_distance_to_center_of_group", "median"),
+    ("mean_distance_to_center_of_group", "mean"),
+    ("mean_distance_to_center_of_group", "std"),
+    ("polarization_order_parameter", "median"),
+    ("polarization_order_parameter", "mean"),
+    ("polarization_order_parameter", "std"),
+    ("rotation_order_parameter", "median"),
+    ("rotation_order_parameter", "mean"),
+    ("rotation_order_parameter", "std"),
+]
+
+INDIVIDUAL_NB_VARIABLES_TO_PLOT = ["nb_angle", "nb_distance"]
+INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT = [
+    ("nb_angle", "ratio_in_front"),
+    ("nb_distance", "median"),
+    ("nb_distance", "mean"),
+    ("nb_distance", "std"),
+]
+
+# DATASETS
+TR_INDIV_BL_FILE_NAME = "tr_indiv_vars_bl.pkl"
+TR_INDIV_NB_BL_FILE_NAME = "tr_indiv_nb_vars_bl.pkl"
+TR_GROUP_BL_FILE_NAME = "tr_group_vars_bl.pkl"
+
+DATA_FILTERS = {
+    "experiment_1": [
+        lambda x: x.experiment_type == 1,
+    ],
+    "experiment_2": [
+        lambda x: x.experiment_type == 2,
+    ],
+    "experiment_3": [
+        lambda x: x.experiment_type == 3,
+    ],
+    "experiment_4": [
+        lambda x: x.experiment_type == 4,
+    ],
+    "experiment_5": [
+        lambda x: x.experiment_type == 5,
+    ],
+    "no_srrm": [lambda x: ~x.line_experiment.str.contains("srrm")],
+    "srrm": [lambda x: x.line_experiment.str.contains("srrm")],
+}
+
+## BOXPLOT KWARGS
+INDIV_BOXPLOT_KWARGS = {
+    "x": "genotype_group_genotype",
+    "palette": COLORS,
+    "whis": 1.5,
+}
+GROUP_BOXPLOT_KWARGS = {
+    "x": "genotype_group",
+    "palette": COLORS,
+    "whis": 1.5,
+}
+INDIV_NB_BOXPLOT_KWARGS = {
+    "x": "focal_nb_genotype",
+    "whis": 1.5,
+}
+
+RATIO_Y_OFFSET = 0.1
+VARIABLE_RATIO_Y_OFFSET = 0.2

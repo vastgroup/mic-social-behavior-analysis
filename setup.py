@@ -1,0 +1,22 @@
+from setuptools import find_packages, setup
+
+setup(
+    name="mic_analysis",
+    version="0.1",
+    description="mic_analysis",
+    url="https://github.com/vastgroup/mic-social-behavior-analysis",
+    author="Francisco Romero-Ferrero",
+    author_email="paco.romero.ferrero@gmail.com",
+    license="GPL",
+    packages=find_packages(),
+    scripts=[
+        "scripts/mic_2_generate_animals_index.py",
+        "scripts/mic_3_generate_trajectories_index.py",
+        "scripts/mic_4_generate_master_videos_table.py",
+        "scripts/mic_5_tracking_sanity_check.py",
+        "scripts/mic_6_generate_tr_datasets.py",
+        "scripts/mic_7_plot_summary_figures.py",
+        "scripts/mic_8_plot_outliers.py",
+    ],
+    zip_safe=False,
+)

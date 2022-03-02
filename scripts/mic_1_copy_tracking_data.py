@@ -1,7 +1,6 @@
 import argparse
 import os
 import shutil
-import sys
 from pprint import pprint
 
 parser = argparse.ArgumentParser(

@@ -2,20 +2,18 @@ import os
 
 import numpy as np
 from mlxtend.evaluate import permutation_test
+from confapp import conf
 
-from .constants import (
-    COLORS,
-    GENERATED_FIGURES_PATH,
-    _group_varialbes_enhanced_names,
-)
-from .stats import MEAN_STATS_KWARGS, PAIRS_OF_GROUPS
+from .constants import _group_varialbes_enhanced_names,
+
+from .stats import conf.MEAN_STATS_KWARGS, conf.PAIRS_OF_GROUPS
 
 
 
 
 TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN_BL = {
     "save_path": os.path.join(
-        GENERATED_FIGURES_PATH, "boxplot_line_replicate_mean_stat_tr_indivs_bl"
+        conf.conf.GENERATED_FIGURES_PATH, "boxplot_line_replicate_mean_stat_tr_indivs_bl"
     ),
     "file_name": "plot",
     "extensions": ["pdf", "png"],
@@ -46,12 +44,12 @@ TR_INDIVS_BOXPLOT_LINE_REPLICATE_MEAN_STAT_MEAN_BL = {
         "x": "genotype_group_genotype",
         # "hue": "genotype_group_genotype",
         "whis": 1.5,
-        "palette": COLORS,
+        "palette": conf.conf.COLORS,
     },
-    "pairs_of_groups_for_stats": PAIRS_OF_GROUPS,
+    "pairs_of_groups_for_stats": conf.PAIRS_OF_GROUPS,
     "stats_kwargs": {
         "test_func": permutation_test,
-        "test_func_kwargs": MEAN_STATS_KWARGS,
+        "test_func_kwargs": conf.MEAN_STATS_KWARGS,
     },
 }
 
@@ -62,7 +60,7 @@ TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN_BL = (
 TR_INDIVS_BOXPLOT_LINE_MEAN_STAT_MEAN_BL.update(
     {
         "save_path": os.path.join(
-            GENERATED_FIGURES_PATH,
+            conf.conf.GENERATED_FIGURES_PATH,
             "boxplot_line_mean_stat_tr_indivs_bl",
         ),
         "rows_partitioned_by": "line",

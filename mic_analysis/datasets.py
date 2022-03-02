@@ -1,10 +1,10 @@
+import logging
 import os
 
 import numpy as np
 import pandas as pd
+from confapp import conf
 
-from .constants import GENERATED_TABLES_PATH
-import logging
 from .stats import (
     _compute_agg_stat,
     group_agg_stasts_kwargs,
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 TRAJECTORYTOOLS_DATASETS_INFO = {
     "tr_indiv_bl": {
         "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_indiv_vars_bl.pkl"
+            conf.GENERATED_TABLES_PATH, conf.TR_INDIV_BL_FILE_NAME
         ),
         "variables_to_compute": _individual_variables,
         "scale_to_body_length": True,
@@ -34,7 +34,7 @@ TRAJECTORYTOOLS_DATASETS_INFO = {
     },
     "tr_indiv_nb_bl": {
         "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_indiv_nb_vars_bl.pkl"
+            conf.GENERATED_TABLES_PATH, conf.TR_INDIV_NB_BL_FILE_NAME
         ),
         "scale_to_body_length": True,
         "variables_to_compute": _individual_nb_variables,
@@ -42,7 +42,7 @@ TRAJECTORYTOOLS_DATASETS_INFO = {
     },
     "tr_group_bl": {
         "file_path": os.path.join(
-            GENERATED_TABLES_PATH, "tr_group_vars_bl.pkl"
+            conf.GENERATED_TABLES_PATH, conf.TR_GROUP_BL_FILE_NAME
         ),
         "scale_to_body_length": True,
         "variables_to_compute": _group_variables,
@@ -93,3 +93,48 @@ def get_data(path, data_filters, agg_stats_kwargs):
             data_stats["genotype_group"] + "-" + data_stats["genotype_nb"]
         )
     return data_filtered, data_stats
+
+
+def get_datasets(data_filters):
+    logger.info("Getting datasets")
+
+    logger.info("Getting dataset data_indiv")
+    data_indiv, data_indiv_stats = get_data(
+        TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_bl"]["file_path"],
+        data_filters=data_filters,
+        agg_stats_kwargs=TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_bl"][
+            "agg_stats_kwargs"
+        ],
+    )
+    logger.info("done")
+
+    logger.info("Getting dataset data_group")
+    data_group, data_group_stats = get_data(
+        TRAJECTORYTOOLS_DATASETS_INFO["tr_group_bl"]["file_path"],
+        data_filters=data_filters,
+        agg_stats_kwargs=TRAJECTORYTOOLS_DATASETS_INFO["tr_group_bl"][
+            "agg_stats_kwargs"
+        ],
+    )
+    logger.info("done")
+
+    logger.info("Getting dataset data_indiv_nb")
+    data_indiv_nb, data_indiv_nb_stats = get_data(
+        TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_nb_bl"]["file_path"],
+        data_filters=data_filters,
+        agg_stats_kwargs=TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_nb_bl"][
+            "agg_stats_kwargs"
+        ],
+    )
+    logger.info("done")
+
+    datasets = {
+        "data_indiv": data_indiv,
+        "data_indiv_stats": data_indiv_stats,
+        "data_group": data_group,
+        "data_group_stats": data_group_stats,
+        "data_indiv_nb": data_indiv_nb,
+        "data_indiv_nb_stats": data_indiv_nb_stats,
+    }
+
+    return datasets

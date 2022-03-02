@@ -2,8 +2,9 @@ import logging
 
 import numpy as np
 import pandas as pd
+from confapp import conf
 
-from .utils import circmean, circstd, ratio_in_back, ratio_in_front
+from .utils import circmean, circstd, ratio_in_front
 from .variables import (
     _group_varialbes_enhanced_names,
     _individual_nb_variables_enhanced_names,
@@ -13,125 +14,44 @@ from .variables import (
 
 logger = logging.getLogger(__name__)
 
+
+def _get_agg_rule_dictionary(variables_names):
+    return {
+        var_: conf.AGGREGATION_STATS["default"]
+        if not var_ in conf.AGGREGATION_STATS.keys()
+        else conf.AGGREGATION_STATS[var_]
+        for var_ in variables_names
+    }
+
+
 # Agg rules for stats
-mean_agg_rule_tr_indivs = {
-    var_: ["median", "mean", "std"]
-    if not "distance_travelled" in var_
-    else "max"
-    for var_ in _individual_variables_enhanced_names
-}
-mean_agg_rule_tr_group = {
-    var_: ["median", "mean", "std"] for var_ in _group_varialbes_enhanced_names
-}
-mean_agg_rule_tr_indiv_nb = {
-    var_: ["median", "mean", "std"]
-    if not "nb_angle" in var_
-    else [circmean, circstd, ratio_in_front]
-    for var_ in _individual_nb_variables_enhanced_names
-}
+mean_agg_rule_tr_indivs = _get_agg_rule_dictionary(
+    _individual_variables_enhanced_names
+)
+mean_agg_rule_tr_group = _get_agg_rule_dictionary(
+    _group_varialbes_enhanced_names
+)
+mean_agg_rule_tr_indiv_nb = _get_agg_rule_dictionary(
+    _individual_nb_variables_enhanced_names
+)
 
 
 # Groupby stats constants
 
 indiv_agg_stasts_kwargs = {
-    "groupby": [
-        "trial_uid",
-        "identity",
-        "genotype_group",
-        "genotype",
-        "line",
-        "line_replicate",
-        "line_experiment",
-        "line_replicate_experiment",
-        "experiment_type",
-    ],
+    "groupby": conf.AGGREGATION_COLUMNS["indiv"],
     "agg_rule": mean_agg_rule_tr_indivs,
 }
 
 group_agg_stasts_kwargs = {
-    "groupby": [
-        "trial_uid",
-        "genotype_group",
-        "line",
-        "line_replicate",
-        "line_experiment",
-        "line_replicate_experiment",
-        "experiment_type",
-    ],
+    "groupby": conf.AGGREGATION_COLUMNS["group"],
     "agg_rule": mean_agg_rule_tr_group,
 }
 
 
 indiv_nb_agg_stats_kwargs = {
-    "groupby": [
-        "trial_uid",
-        "identity",
-        "identity_nb",
-        "genotype_group",
-        "genotype",
-        "genotype_nb",
-        "line",
-        "line_replicate",
-        "line_experiment",
-        "line_replicate_experiment",
-        "experiment_type",
-        "focal_nb_genotype",
-    ],
+    "groupby": conf.AGGREGATION_COLUMNS["indiv_nb"],
     "agg_rule": mean_agg_rule_tr_indiv_nb,
-}
-
-# Stats
-PAIRS_OF_GROUPS = [
-    {"pair": (("WT_HET-WT"), ("WT_HET-HET")), "level": 0},  # individual
-    {"pair": (("HET_DEL-HET"), ("HET_DEL-DEL")), "level": 0},
-    {"pair": (("WT_DEL-WT"), ("WT_DEL-DEL")), "level": 1},
-    {"pair": (("WT_WT-WT"), ("WT_HET-WT")), "level": 1},
-    {"pair": (("WT_HET-HET"), ("HET_HET-HET")), "level": 2},
-    {"pair": (("HET_HET-HET"), ("HET_DEL-HET")), "level": 3},
-    {"pair": (("HET_DEL-DEL"), ("DEL_DEL-DEL")), "level": 3},
-    {"pair": (("DEL_DEL-DEL"), ("WT_DEL-DEL")), "level": 4},
-    {"pair": (("WT_WT-WT"), ("HET_HET-HET")), "level": 4},
-    {"pair": (("HET_HET-HET"), ("DEL_DEL-DEL")), "level": 5},
-    {"pair": (("WT_WT-WT"), ("DEL_DEL-DEL")), "level": 6},
-    {"pair": (("WT_WT-WT"), ("WT_DEL-WT")), "level": 7},
-    {"pair": (("WT_WT_WT_WT_WT-WT"), ("DEL_DEL_DEL_DEL_DEL-DEL")), "level": 8},
-    {"pair": ("HET_HET", "HET_DEL"), "level": 0},  # group
-    {"pair": ("WT_WT", "WT_HET"), "level": 0},
-    {"pair": ("DEL_DEL", "WT_DEL"), "level": 0},
-    {"pair": ("WT_HET", "HET_HET"), "level": 1},
-    {"pair": ("HET_DEL", "DEL_DEL"), "level": 1},
-    {"pair": ("WT_WT", "HET_HET"), "level": 2},
-    {"pair": ("HET_HET", "DEL_DEL"), "level": 3},
-    {"pair": ("WT_WT", "DEL_DEL"), "level": 3},
-    {"pair": ("WT_WT_WT_WT_WT", "DEL_DEL_DEL_DEL_DEL"), "level": 4},
-    {"pair": ("WT-WT", "WT-HET"), "level": 0},  # focal nb
-    {"pair": ("WT-HET", "WT-DEL"), "level": 1},
-    {"pair": ("WT-WT", "WT-DEL"), "level": 2},
-    {"pair": ("HET-WT", "HET-HET"), "level": 0},
-    {"pair": ("HET-HET", "HET-DEL"), "level": 1},
-    {"pair": ("HET-WT", "HET-DEL"), "level": 2},
-    {"pair": ("DEL-WT", "DEL-HET"), "level": 0},
-    {"pair": ("DEL-HET", "DEL-DEL"), "level": 1},
-    {"pair": ("DEL-WT", "DEL-DEL"), "level": 2},
-    {"pair": ("WT-HET", "HT-WT"), "level": 3},
-    {"pair": ("HET-DEL", "DEL-HET"), "level": 3},
-    {"pair": ("WT-DEL", "DEL-WT"), "level": 4},
-    {"pair": ("WT-WT", "DEL-DEL"), "level": 5},
-    {"pair": ("HET-HET", "DEL-DEL"), "level": 6},
-]
-
-
-MEAN_STATS_KWARGS = {
-    "method": "approximate",
-    "num_rounds": 10000,
-    "func": "mean",
-    "paired": False,
-}
-MEDIAN_STATS_KWARGS = {
-    "method": "approximate",
-    "num_rounds": 10000,
-    "func": "median",
-    "paired": False,
 }
 
 
@@ -169,7 +89,12 @@ def _compute_groups_stats(
             outliers_a = _get_outliers(var_data_a, whis)
             outliers_b = _get_outliers(var_data_b, whis)
 
-            if "identity" in grouped_data:
+            if (
+                "identity" in grouped_data_a.columns
+                and "identity_nb" in grouped_data_a.columns
+            ):
+                cols = ["trial_uid", "identity", "identity_nb"]
+            elif "identity" in grouped_data_a.columns:
                 cols = ["trial_uid", "identity"]
             else:
                 # is a group variable
