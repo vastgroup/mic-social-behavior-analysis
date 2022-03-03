@@ -22,6 +22,7 @@ This repository includes code to:
 
         conda env create -f install_environment.yml
         pip install -e trajectorytools
+        pip install -e pandas_split
         pip install -e .
 
 ## Run

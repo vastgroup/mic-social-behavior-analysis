@@ -5,10 +5,7 @@ import os
 import miniball
 import numpy as np
 import pandas as pd
-import trajectorytools as tt
 from confapp import conf
-from tqdm import tqdm
-from trajectorytools.export import tr_variables_to_df
 
 from mic_analysis.utils import clean_impossible_speed_jumps
 
@@ -627,52 +624,6 @@ def generate_videos_valid_for_analysis_table(
     return videos_valid_for_analysis
 
 
-## VARIABLES TABLES
-def _speed(trajectories):
-    vel = np.diff(trajectories, axis=0)
-    speed = np.sqrt(vel[..., 0] ** 2 + vel[..., 1] ** 2)
-    return speed
-
-
-def get_trajectories(
-    trajectories_path,
-    center=None,
-    interpolate_nans=None,
-    smooth_params=None,
-    length_unit_dict=None,
-    time_unit_dict=None,
-    tracking_interval=None,
-):
-    tr_dict = np.load(trajectories_path, allow_pickle=True).item()
-
-    tr_dict, _ = clean_impossible_speed_jumps(tr_dict, tracking_interval)
-
-    tr = tt.trajectories.FishTrajectories.from_idtracker_(
-        tr_dict,
-        center=center,
-        interpolate_nans=interpolate_nans,
-        smooth_params=smooth_params,
-        dtype=np.float64,
-    )
-
-    # Select tracked frames
-    if tracking_interval is not None:
-        tr = tr[tracking_interval[0] : tracking_interval[1]]
-
-    # Change units
-    if length_unit_dict is not None:
-        tr.new_length_unit(
-            length_unit_dict["length_unit"],
-            length_unit_dict["length_unit_name"],
-        )
-    if time_unit_dict is not None:
-        tr.new_time_unit(
-            time_unit_dict["time_unit"], time_unit_dict["time_unit_name"]
-        )
-
-    return tr
-
-
 def _add_identity_info(
     tr_vars_df, videos_table, animals_table, identity_column_name="identity"
 ):
@@ -778,75 +729,4 @@ def add_line_and_genotype_info(tr_vars_df, videos_table, animals_table):
     else:
         columns_to_drop_nan = ["frame"]
     tr_vars_df.dropna(subset=columns_to_drop_nan, inplace=True, how="any")
-    return tr_vars_df
-
-
-def generate_variables_table(
-    videos_table, animals_table, variables_list, scale_to_body_length=False
-):
-    tr_vars_dfs = []
-    for idx, tr_row in tqdm(
-        videos_table.iterrows(),
-        desc="generating_dataframes",
-        total=len(videos_table),
-    ):
-
-        # force_valid = False
-        # if isinstance(tr_row.abs_trajectory_path, str) and (
-        #     "srrm3_17_1_3" in tr_row.abs_trajectory_path
-        # ):
-        #     force_valid = True
-        if tr_row.tracked and tr_row.valid_for_analysis:  # or force_valid:
-            animals = animals_table[
-                animals_table.trial_uid == tr_row.trial_uid
-            ]
-            mean_size_cm = np.mean(animals.size_cm)
-            if np.isnan(mean_size_cm):
-                logger.info(
-                    "Getting mean size_cm from all videos of same gene"
-                )
-                mean_size_cm = animals_table[
-                    (animals_table.gene == tr_row.gene)
-                    & (animals_table.founder == tr_row.founder)
-                    & (animals_table.replicate == tr_row.replicate)
-                    & (animals_table.experiment_type == tr_row.experiment_type)
-                ].size_cm.mean()
-                if np.isnan(mean_size_cm):
-                    logger.info(
-                        "Getting mean size_cm from body_length "
-                        "idtracker.ai info"
-                    )
-                    mean_size_cm = tr_row.body_length / conf.PX_CM
-            if scale_to_body_length:
-                length_unit = conf.PX_CM * mean_size_cm
-                length_unit_name = "BL"
-            else:
-                length_unit = conf.PX_CM
-                length_unit_name = "cm"
-            tr = get_trajectories(
-                tr_row.abs_trajectory_path,
-                center=tr_row.roi_center,
-                interpolate_nans=True,
-                smooth_params={"sigma": conf.SIGMA},
-                length_unit_dict={
-                    "length_unit": length_unit,
-                    "length_unit_name": length_unit_name,
-                },
-                time_unit_dict={
-                    "time_unit": conf.FRAME_RATE,
-                    "time_unit_name": "seconds",
-                },
-                tracking_interval=[0, conf.NUM_FRAMES_FOR_ANALYSIS],
-            )
-            tr_vars_df = tr_variables_to_df(tr, variables_list)
-            if "s_x" in tr_vars_df.columns:
-                tr_vars_df["s_x_normed"] = (
-                    tr_vars_df["s_x"] / tr_vars_df["s_x"].abs().max()
-                )
-                tr_vars_df["s_y_normed"] = (
-                    tr_vars_df["s_y"] / tr_vars_df["s_y"].abs().max()
-                )
-            tr_vars_df["trial_uid"] = [tr_row.trial_uid] * len(tr_vars_df)
-            tr_vars_dfs.append(tr_vars_df)
-    tr_vars_df = pd.concat(tr_vars_dfs).reset_index()
     return tr_vars_df

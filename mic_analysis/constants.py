@@ -399,9 +399,9 @@ INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT = [
 ]
 
 # DATASETS
-TR_INDIV_BL_FILE_NAME = "tr_indiv_vars_bl.pkl"
-TR_INDIV_NB_BL_FILE_NAME = "tr_indiv_nb_vars_bl.pkl"
-TR_GROUP_BL_FILE_NAME = "tr_group_vars_bl.pkl"
+TR_INDIV_BL_DIR_NAME = "tr_indiv_vars_bl"
+TR_INDIV_NB_BL_DIR_NAME = "tr_indiv_nb_vars_bl"
+TR_GROUP_BL_DIR_NAME = "tr_group_vars_bl"
 
 DATA_FILTERS = {
     "experiment_1": [
