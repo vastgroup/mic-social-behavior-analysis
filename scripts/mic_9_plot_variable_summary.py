@@ -78,3 +78,5 @@ for i, stat in enumerate(stats):
             },
         )
         _boxplot_axes_one_variable(ax, subdata, variable)
+
+plt.show()
