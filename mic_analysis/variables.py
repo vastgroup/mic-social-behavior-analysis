@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 from confapp import conf
@@ -89,25 +91,35 @@ all_variables_names_enhanced = (
 )
 
 
-def compute_variables_ranges(datasets):
+def compute_variables_ranges(data):
     variables_ranges = []
 
-    for dataset_name, dataset in datasets.items():
-        if "stats" not in dataset:
-            for col in dataset.columns:
-                if col in all_variables_names_enhanced:
-                    if col == "normal_acceleration":
-                        min_ = np.nanpercentile(dataset[col], 1)
-                        max_ = np.nanpercentile(dataset[col], 99)
-                    else:
-                        min_ = np.nanmin(dataset[col])
-                        max_ = np.nanmax(dataset[col])
-                    variables_ranges.append(
-                        {
-                            "variable": col,
-                            "min": min_,
-                            "max": max_,
-                        }
-                    )
+    for col in data.columns:
+        if col in all_variables_names_enhanced:
+            if "accel" in col:
+                min_ = np.nanpercentile(data[col], 1)
+                max_ = np.nanpercentile(data[col], 99)
+            else:
+                min_ = np.nanmin(data[col])
+                max_ = np.nanmax(data[col])
+            variables_ranges.append(
+                {
+                    "variable": col,
+                    "min": min_,
+                    "max": max_,
+                }
+            )
     variables_ranges = pd.DataFrame(variables_ranges)
     return variables_ranges
+
+
+def get_variables_ranges(datasets):
+    all_variables_ranges = []
+    for name, dataset_info in datasets.items():
+        variables_range_path = os.path.join(
+            dataset_info["dir_path"], conf.VARIABLES_RANGES_FILE_NAME
+        )
+        variables_range = pd.read_pickle(variables_range_path)
+        all_variables_ranges.append(variables_range)
+    all_variables_ranges = pd.concat(all_variables_ranges)
+    return all_variables_ranges

@@ -5,6 +5,8 @@ from mlxtend.evaluate import permutation_test
 
 from mic_analysis.utils import circmean, circstd, ratio_in_front
 
+NUM_JOBS_PARALLELIZATION = 6
+
 # TRAJECTORIES CONSTANTS
 SIGMA = 1
 PX_CM = 54
@@ -44,6 +46,10 @@ TRACKING_DATA_FOLDER_PATH = os.path.join(DATA_DIR, "Social_DATA")
 TRAJECTORIES_INDEX_FILE_NAME = os.path.join(
     GENERATED_TABLES_PATH, "trajectories_index.csv"
 )
+
+# Variables
+VARIABLES_RANGES_FILE_NAME = "variables_ranges.pkl"
+PER_ANIMAL_STATS_FILE_NAME = "per_animal_stats.pkl"
 
 # Experiments information
 VIDEOS_INDEX_FILE_NAME = os.path.join(

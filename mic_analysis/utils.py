@@ -63,19 +63,19 @@ def data_filter(data, filters):
     return data
 
 
-def _select_partition_data(data, partition_col, partition_uid):
-    return data_filter(data, [lambda x: x[partition_col] == partition_uid])
+# def _select_partition_data(data, partition_col, partition_uid):
+#     return data_filter(data, [lambda x: x[partition_col] == partition_uid])
 
 
-def _select_partition_from_datasets(
-    datasets, datasets_names, partition_col, partition_uid
-):
-    datasets_partition = {}
-    for dataset_name in datasets_names:
-        datasets_partition[dataset_name] = _select_partition_data(
-            datasets[dataset_name], partition_col, partition_uid
-        )
-    return datasets_partition
+# def _select_partition_from_datasets(
+#     datasets, datasets_names, partition_col, partition_uid
+# ):
+#     datasets_partition = {}
+#     for dataset_name in datasets_names:
+#         datasets_partition[dataset_name] = _select_partition_data(
+#             datasets[dataset_name], partition_col, partition_uid
+#         )
+#     return datasets_partition
 
 
 def circmean(x):

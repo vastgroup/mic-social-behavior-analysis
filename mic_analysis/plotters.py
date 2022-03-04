@@ -9,18 +9,23 @@ import pandas as pd
 import seaborn as sns
 import trajectorytools as tt
 from confapp import conf
+from joblib import Parallel, delayed
 from matplotlib.gridspec import GridSpec
 from natsort import natsorted
 from tqdm import tqdm
 from trajectorytools.export.variables import GROUP_VARIABLES
 from trajectorytools.plot import plot_polar_histogram, polar_histogram
 
-from .datasets import TRAJECTORYTOOLS_DATASETS_INFO
+from .datasets import TRAJECTORYTOOLS_DATASETS_INFO, get_partition_datasets
 from .stats import _compute_groups_stats, _get_num_data_points
-from .string_infos import (get_animal_info_str, get_focal_nb_info,
-                           get_partition_info_str, get_video_info_str)
-from .utils import _select_partition_from_datasets, circmean, circstd
-from .variables import all_variables_names, all_variables_names_enhanced
+from .string_infos import (
+    get_animal_info_str,
+    get_focal_nb_info,
+    get_partition_info_str,
+    get_video_info_str,
+)
+from .utils import data_filter
+from .variables import all_variables_names_enhanced
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +134,6 @@ def _get_x_group(group, order):
 
 
 def _plot_var_stat(ax, var_stat, y_line_stat, order, y_offset, y_lim):
-
     x_group_a = _get_x_group(
         var_stat["group_a"],
         order,
@@ -998,6 +1002,7 @@ def _plot_partition_indiv_vars_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
+    logger.info("Plotting partition_indiv_vars_summary")
     num_genotype_groups = len(data["genotype_group"].unique())
     # TODO: Need to add more axes for boxplots if we consider different
     # mean and median stats
@@ -1090,6 +1095,7 @@ def _plot_partition_group_vars_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
+    logger.info("Plotting partition_group_vars_summary")
     num_genotype_groups = len(data["genotype_group"].unique())
     (
         fig,
@@ -1179,6 +1185,7 @@ def _plot_partition_indiv_nb_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
+    logger.info("Plotting partition_indiv_nb_summary")
     num_focal_nb_genotype_groups = len(data["focal_nb_genotype"].unique())
     (
         fig,
@@ -1269,16 +1276,16 @@ def _plot_partition_indiv_nb_summary(
 
 
 def plot_summary_animal(
-    datasets,
+    datasets_partition,
     animal_col,
     animal_uid,
     variables_ranges,
     save=False,
     save_path=".",
 ):
-    datasets_partition = _select_partition_from_datasets(
-        datasets, ["data_indiv"], animal_col, animal_uid
-    )
+    # datasets_partition = _select_partition_from_datasets(
+    #     datasets, ["data_indiv"], animal_col, animal_uid
+    # )
     animal_info_str = get_animal_info_str(datasets_partition["data_indiv"])
 
     fig = _plot_animal_indiv_vars_summary(
@@ -1293,61 +1300,79 @@ def plot_summary_animal(
 
 
 def plot_summary_video(
-    datasets,
-    video_col,
+    datasets_partition,
     video_uid,
     animal_col,
     variables_ranges,
     save=False,
     save_path=".",
+    replot=False,
 ):
-    datasets_partition = _select_partition_from_datasets(
-        datasets,
-        ["data_indiv", "data_group", "data_indiv_nb"],
-        video_col,
-        video_uid,
-    )
 
     video_info_str = get_video_info_str(datasets_partition["data_indiv"])
-    fig = _plot_video_indiv_vars_summary(
-        datasets_partition["data_indiv"],
-        conf.INDIVIDUAL_VARIABLES_TO_PLOT,
-        variables_ranges,
-        hue="identity",
-    )
-    fig.suptitle(video_info_str)
-    if save:
-        fig.savefig(os.path.join(save_path, f"{video_uid}_indiv.png"))
-        fig.savefig(os.path.join(save_path, f"{video_uid}_indiv.pdf"))
 
-    fig = _plot_group_variables_summary(
-        datasets_partition["data_group"],
-        conf.GROUP_VARIABLES_TO_PLOT,
-        variables_ranges,
+    fig_save_path_png = os.path.join(save_path, f"{video_uid}_indiv.png")
+    fig_save_path_pdf = os.path.join(save_path, f"{video_uid}_indiv.pdf")
+    files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
+        fig_save_path_pdf
     )
-    fig.suptitle(video_info_str)
-    if save:
-        fig.savefig(os.path.join(save_path, f"{video_uid}_group.png"))
-        fig.savefig(os.path.join(save_path, f"{video_uid}_group.pdf"))
+    if not files_exists or replot:
+        fig = _plot_video_indiv_vars_summary(
+            datasets_partition["data_indiv"],
+            conf.INDIVIDUAL_VARIABLES_TO_PLOT,
+            variables_ranges,
+            hue="identity",
+        )
+        fig.suptitle(video_info_str)
+        if save:
+            fig.savefig(fig_save_path_png)
+            fig.savefig(fig_save_path_pdf)
+            plt.close()
 
-    for animal_uid in datasets_partition["data_indiv_nb"][animal_col].unique():
-        animal_nb_data = datasets_partition["data_indiv_nb"][
-            datasets_partition["data_indiv_nb"][animal_col] == animal_uid
-        ]
-        fig = _plot_video_indiv_nb_variables_summary(
-            animal_nb_data,
-            conf.INDIVIDUAL_NB_VARIABLES_TO_PLOT,
+    fig_save_path_png = os.path.join(save_path, f"{video_uid}_group.png")
+    fig_save_path_pdf = os.path.join(save_path, f"{video_uid}_group.pdf")
+    files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
+        fig_save_path_pdf
+    )
+    if not files_exists or replot:
+        fig = _plot_group_variables_summary(
+            datasets_partition["data_group"],
+            conf.GROUP_VARIABLES_TO_PLOT,
             variables_ranges,
         )
-        focal_nb_info_str = get_focal_nb_info(animal_nb_data)
-        fig.suptitle(focal_nb_info_str)
+        fig.suptitle(video_info_str)
         if save:
-            fig.savefig(os.path.join(save_path, f"{animal_uid}_indiv_nb.png"))
-            fig.savefig(os.path.join(save_path, f"{animal_uid}_indiv_nb.pdf"))
+            fig.savefig(fig_save_path_png)
+            fig.savefig(fig_save_path_pdf)
+            plt.close()
+
+    fig_save_path_png = os.path.join(save_path, f"{video_uid}_indiv_nb.png")
+    fig_save_path_pdf = os.path.join(save_path, f"{video_uid}_indiv_nb.pdf")
+    files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
+        fig_save_path_pdf
+    )
+    if not files_exists or replot:
+        for animal_uid in datasets_partition["data_indiv_nb"][
+            animal_col
+        ].unique():
+            animal_nb_data = datasets_partition["data_indiv_nb"][
+                datasets_partition["data_indiv_nb"][animal_col] == animal_uid
+            ]
+            fig = _plot_video_indiv_nb_variables_summary(
+                animal_nb_data,
+                conf.INDIVIDUAL_NB_VARIABLES_TO_PLOT,
+                variables_ranges,
+            )
+            focal_nb_info_str = get_focal_nb_info(animal_nb_data)
+            fig.suptitle(focal_nb_info_str)
+            if save:
+                fig.savefig(fig_save_path_png)
+                fig.savefig(fig_save_path_pdf)
+                plt.close()
 
 
 def plot_summary_partition(
-    datasets,
+    datasets_info,
     partition_col,
     partition_uid,
     variables_ranges,
@@ -1357,126 +1382,126 @@ def plot_summary_partition(
     stats_kwargs=conf.MEAN_STATS_CONFIG,
     save=False,
     save_path=".",
+    replot=False,
 ):
-    save_path = os.path.join(save_path, partition_uid)
-    if not os.path.isdir(save_path):
-        os.makedirs(save_path)
-    datasets_partition = _select_partition_from_datasets(
-        datasets,
-        [
-            "data_indiv",
-            "data_group",
-            "data_indiv_nb",
-            "data_indiv_stats",
-            "data_group_stats",
-            "data_indiv_nb_stats",
-        ],
-        partition_col,
-        partition_uid,
+    logger.info(f"*********   Plotting {partition_uid} summary   ******")
+    datasets_partition, no_data = get_partition_datasets(
+        datasets_info, partition_col, partition_uid
     )
+    if not no_data:
+        save_path = os.path.join(save_path, partition_uid)
+        if not os.path.isdir(save_path):
+            os.makedirs(save_path)
 
-    all_outliers = []
-    all_test_stats = []
+        all_outliers = []
+        all_test_stats = []
 
-    line_replicate_info_str = get_partition_info_str(
-        datasets_partition["data_indiv"], partition_col
-    )
-    fig, outliers, test_stats = _plot_partition_indiv_vars_summary(
-        datasets_partition["data_indiv"],
-        datasets_partition["data_indiv_stats"],
-        conf.INDIVIDUAL_VARIABLES_TO_PLOT,
-        variables_ranges,
-        conf.INDIVIDUAL_VARIABLES_STATS_TO_PLOT,
-        indiv_boxplot_kwargs,
-        stats_kwargs,
-        hue="genotype_group_genotype",
-    )
-    outliers["var_type"] = ["indiv"] * len(outliers)
-    test_stats["var_type"] = ["indiv"] * len(test_stats)
-    all_outliers.append(outliers)
-    all_test_stats.append(test_stats)
-    fig.suptitle(line_replicate_info_str)
-    if save:
-        fig.savefig(os.path.join(save_path, f"indiv_vars.png"))
-        fig.savefig(os.path.join(save_path, f"indiv_vars.pdf"))
-        outliers.to_csv(
-            os.path.join(save_path, "indiv_outliers.csv"), index=False
+        fig_save_path_png = os.path.join(save_path, f"indiv_vars.png")
+        fig_save_path_pdf = os.path.join(save_path, f"indiv_vars.pdf")
+        line_replicate_info_str = get_partition_info_str(
+            datasets_partition["data_indiv"], partition_col
         )
-        test_stats.to_csv(
-            os.path.join(save_path, "indiv_test_stats.csv"), index=False
+        fig, outliers, test_stats = _plot_partition_indiv_vars_summary(
+            datasets_partition["data_indiv"],
+            datasets_partition["data_indiv_stats"],
+            conf.INDIVIDUAL_VARIABLES_TO_PLOT,
+            variables_ranges,
+            conf.INDIVIDUAL_VARIABLES_STATS_TO_PLOT,
+            indiv_boxplot_kwargs,
+            stats_kwargs,
+            hue="genotype_group_genotype",
         )
+        outliers["var_type"] = ["indiv"] * len(outliers)
+        test_stats["var_type"] = ["indiv"] * len(test_stats)
+        all_outliers.append(outliers)
+        all_test_stats.append(test_stats)
+        fig.suptitle(line_replicate_info_str)
+        if save:
+            logger.info("Saving figures outliers and stats")
+            fig.savefig(fig_save_path_png)
+            fig.savefig(fig_save_path_pdf)
+            outliers.to_csv(
+                os.path.join(save_path, "indiv_outliers.csv"), index=False
+            )
+            test_stats.to_csv(
+                os.path.join(save_path, "indiv_test_stats.csv"), index=False
+            )
 
-    fig, outliers, test_stats = _plot_partition_group_vars_summary(
-        datasets_partition["data_group"],
-        datasets_partition["data_group_stats"],
-        conf.GROUP_VARIABLES_TO_PLOT,
-        variables_ranges,
-        conf.GROUP_VARIABLES_STATS_TO_PLOT,
-        group_boxplot_kwargs,
-        stats_kwargs,
-        hue="genotype_group",
-    )
-    outliers["var_type"] = ["group"] * len(outliers)
-    test_stats["var_type"] = ["group"] * len(test_stats)
-    all_outliers.append(outliers)
-    all_test_stats.append(test_stats)
-
-    fig.suptitle(line_replicate_info_str)
-    if save:
-        fig.savefig(os.path.join(save_path, f"group_vars.png"))
-        fig.savefig(os.path.join(save_path, f"group_vars.pdf"))
-        outliers.to_csv(
-            os.path.join(save_path, "group_outliers.csv"), index=False
+        fig, outliers, test_stats = _plot_partition_group_vars_summary(
+            datasets_partition["data_group"],
+            datasets_partition["data_group_stats"],
+            conf.GROUP_VARIABLES_TO_PLOT,
+            variables_ranges,
+            conf.GROUP_VARIABLES_STATS_TO_PLOT,
+            group_boxplot_kwargs,
+            stats_kwargs,
+            hue="genotype_group",
         )
-        test_stats.to_csv(
-            os.path.join(save_path, "group_test_stats.csv"), index=False
-        )
+        outliers["var_type"] = ["group"] * len(outliers)
+        test_stats["var_type"] = ["group"] * len(test_stats)
+        all_outliers.append(outliers)
+        all_test_stats.append(test_stats)
 
-    fig, outliers, test_stats = _plot_partition_indiv_nb_summary(
-        datasets_partition["data_indiv_nb"],
-        datasets_partition["data_indiv_nb_stats"],
-        conf.INDIVIDUAL_NB_VARIABLES_TO_PLOT,
-        variables_ranges,
-        conf.INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT,
-        indiv_nb_boxplot_kwargs,
-        stats_kwargs,
-        hue="focal_nb_genotype",
-    )
-    outliers["var_type"] = ["indiv_nb"] * len(outliers)
-    test_stats["var_type"] = ["indiv_nb"] * len(test_stats)
-    all_outliers.append(outliers)
-    all_test_stats.append(test_stats)
+        fig.suptitle(line_replicate_info_str)
+        if save:
+            logger.info("Saving figures outliers and stats")
+            fig.savefig(os.path.join(save_path, f"group_vars.png"))
+            fig.savefig(os.path.join(save_path, f"group_vars.pdf"))
+            outliers.to_csv(
+                os.path.join(save_path, "group_outliers.csv"), index=False
+            )
+            test_stats.to_csv(
+                os.path.join(save_path, "group_test_stats.csv"), index=False
+            )
 
-    fig.suptitle(line_replicate_info_str)
-    if save:
-        fig.savefig(os.path.join(save_path, f"indiv_nb_vars.png"))
-        fig.savefig(os.path.join(save_path, f"indiv_nb_vars.pdf"))
-        outliers.to_csv(
-            os.path.join(save_path, "indiv_nb_outliers.csv"), index=False
+        fig, outliers, test_stats = _plot_partition_indiv_nb_summary(
+            datasets_partition["data_indiv_nb"],
+            datasets_partition["data_indiv_nb_stats"],
+            conf.INDIVIDUAL_NB_VARIABLES_TO_PLOT,
+            variables_ranges,
+            conf.INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT,
+            indiv_nb_boxplot_kwargs,
+            stats_kwargs,
+            hue="focal_nb_genotype",
         )
-        test_stats.to_csv(
-            os.path.join(save_path, "indiv_nb_test_stats.csv"), index=False
-        )
+        outliers["var_type"] = ["indiv_nb"] * len(outliers)
+        test_stats["var_type"] = ["indiv_nb"] * len(test_stats)
+        all_outliers.append(outliers)
+        all_test_stats.append(test_stats)
 
-    all_outliers = pd.concat(all_outliers)
-    all_test_stats = pd.concat(all_test_stats)
-    if save:
-        all_outliers.to_csv(
-            os.path.join(save_path, "all_outliers.csv"), index=False
-        )
-        all_test_stats.to_csv(
-            os.path.join(save_path, "all_test_stats.csv"), index=False
-        )
-    return all_outliers, all_test_stats
+        fig.suptitle(line_replicate_info_str)
+        if save:
+            logger.info("Saving figures outliers and stats")
+            fig.savefig(os.path.join(save_path, f"indiv_nb_vars.png"))
+            fig.savefig(os.path.join(save_path, f"indiv_nb_vars.pdf"))
+            outliers.to_csv(
+                os.path.join(save_path, "indiv_nb_outliers.csv"), index=False
+            )
+            test_stats.to_csv(
+                os.path.join(save_path, "indiv_nb_test_stats.csv"), index=False
+            )
+
+        all_outliers = pd.concat(all_outliers)
+        all_test_stats = pd.concat(all_test_stats)
+        if save:
+            all_outliers.to_csv(
+                os.path.join(save_path, "all_outliers.csv"), index=False
+            )
+            all_test_stats.to_csv(
+                os.path.join(save_path, "all_test_stats.csv"), index=False
+            )
+        return all_outliers, all_test_stats
+
+    else:
+        logger.info(f"There is not data for {partition_uid}")
+        return None, None
 
 
-def plot_summary_all_partitions_with_outliers(
-    datasets, variables_ranges, partition_col
+def plot_summary_all_partitions(
+    datasets_info, videos_table, variables_ranges, partition_col, replot
 ):
 
-    possible_partition_uids = natsorted(
-        datasets["data_group"][partition_col].unique()
-    )
+    possible_partition_uids = natsorted(videos_table[partition_col].unique())
 
     save_path = os.path.join(
         conf.GENERATED_FIGURES_PATH, f"summary_{partition_col}"
@@ -1484,16 +1509,18 @@ def plot_summary_all_partitions_with_outliers(
     if not os.path.isdir(save_path):
         os.makedirs(save_path)
 
-    for partition in possible_partition_uids:
-        logger.info(f"Plotting {partition} summary")
-        plot_summary_partition(
-            datasets,
+    Parallel(n_jobs=conf.NUM_JOBS_PARALLELIZATION)(
+        delayed(plot_summary_partition)(
+            datasets_info,
             partition_col,
             partition,
             variables_ranges,
             save=True,
             save_path=save_path,
+            replot=replot,
         )
+        for partition in possible_partition_uids
+    )
 
 
 ### Video sanity check summary
@@ -1647,3 +1674,56 @@ def plot_tracked_videos_summary(videos_table):
                 conf.GENERATED_FIGURES_PATH, f"videos_summary{extension}"
             )
         )
+
+
+def filter_datasets(datasets, filters):
+    filtered_datasets = {}
+    for name, dataset in datasets.items():
+        filtered_datasets[name] = data_filter(dataset, filters)
+    return filtered_datasets
+
+
+def plot_partition_outliers(
+    datasets,
+    variables_ranges,
+    partition,
+    partition_col,
+    video_column,
+    animal_column,
+    path_to_summary_folder,
+    replot,
+):
+    logger.info(f"Plotting outlier for partition {partition}")
+    datasets, no_data = get_partition_datasets(
+        TRAJECTORYTOOLS_DATASETS_INFO, partition_col, partition
+    )
+    if not no_data:
+        logger.info(f"Plotting outliers for {partition}")
+        partition_folder = os.path.join(path_to_summary_folder, partition)
+        outliers_path = os.path.join(partition_folder, "all_outliers.csv")
+        if os.path.isfile(outliers_path):
+            outliers = pd.read_csv(outliers_path)
+            outliers_uids = list(natsorted(outliers[video_column].unique()))
+            if np.nan in outliers_uids:
+                outliers_uids.remove(np.nan)
+            for outlier_uid in outliers_uids:
+                logger.info(f"Plotting outlier {outlier_uid}")
+                save_path = os.path.join(
+                    partition_folder, "outliers_summaries"
+                )
+                outlier_datasets = filter_datasets(
+                    datasets, [lambda x: x["trial_uid"] == outlier_uid]
+                )
+                if not os.path.isdir(save_path):
+                    os.makedirs(save_path)
+                plot_summary_video(
+                    outlier_datasets,
+                    outlier_uid,
+                    animal_column,
+                    variables_ranges,
+                    save=True,
+                    save_path=save_path,
+                    replot=replot,
+                )
+    else:
+        logger.info(f"Partition {partition} has no data")

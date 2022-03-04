@@ -10,6 +10,7 @@ from confapp import conf
 from pandas_split.pandas_split import read_all
 from tqdm import tqdm
 from trajectorytools.export import tr_variables_to_df
+
 from mic_analysis.table_generators_utils import add_line_and_genotype_info
 
 from .stats import (
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 TRAJECTORYTOOLS_DATASETS_INFO = {
     "tr_indiv_bl": {
+        "var_type": "indiv",
         "dir_path": os.path.join(
             conf.GENERATED_TABLES_PATH, conf.TR_INDIV_BL_DIR_NAME
         ),
@@ -40,6 +42,7 @@ TRAJECTORYTOOLS_DATASETS_INFO = {
         "agg_stats_kwargs": indiv_agg_stasts_kwargs,
     },
     "tr_indiv_nb_bl": {
+        "var_type": "indiv_nb",
         "dir_path": os.path.join(
             conf.GENERATED_TABLES_PATH, conf.TR_INDIV_NB_BL_DIR_NAME
         ),
@@ -48,6 +51,7 @@ TRAJECTORYTOOLS_DATASETS_INFO = {
         "agg_stats_kwargs": indiv_nb_agg_stats_kwargs,
     },
     "tr_group_bl": {
+        "var_type": "group",
         "dir_path": os.path.join(
             conf.GENERATED_TABLES_PATH, conf.TR_GROUP_BL_DIR_NAME
         ),
@@ -60,7 +64,7 @@ TRAJECTORYTOOLS_DATASETS_INFO = {
 
 def get_data(path, data_filters, agg_stats_kwargs):
     logger.info("Loading data")
-    data = pd.read_pickle(path)
+    data = load_dataset(path, video_filters=data_filters)
     logger.info("Loaded")
 
     if "nb_angle" in data.columns:
@@ -89,8 +93,8 @@ def get_data(path, data_filters, agg_stats_kwargs):
             data["genotype"] + "-" + data["genotype_nb"]
         )
     logger.info("Added")
-    data_filtered = data_filter(data, data_filters)
-    data_stats = _compute_agg_stat(data=data_filtered, **agg_stats_kwargs)
+
+    data_stats = _compute_agg_stat(data=data, **agg_stats_kwargs)
     if "indiv" in path:
         data_stats["genotype_group_genotype"] = (
             data_stats["genotype_group"] + "-" + data_stats["genotype"]
@@ -99,7 +103,27 @@ def get_data(path, data_filters, agg_stats_kwargs):
         data_stats["genotype_group_genotype_nb"] = (
             data_stats["genotype_group"] + "-" + data_stats["genotype_nb"]
         )
-    return data_filtered, data_stats
+    return data, data_stats
+
+
+def get_partition_datasets(datasets_info, partition_col, partition):
+    video_filters = [lambda x: x[partition_col] == partition]
+    datasets = {}
+    no_data = False
+    for name, dataset_info in datasets_info.items():
+        logger.info(f"Getting dataset {name}")
+        data = load_dataset(dataset_info["dir_path"], video_filters)
+        if data.empty:
+            no_data = True
+        data_stats = pd.read_pickle(
+            os.path.join(
+                dataset_info["dir_path"], conf.PER_ANIMAL_STATS_FILE_NAME
+            )
+        )
+        data_stats = data_filter(data_stats, filters=video_filters)
+        datasets[f"data_{dataset_info['var_type']}"] = data
+        datasets[f"data_{dataset_info['var_type']}_stats"] = data_stats
+    return datasets, no_data
 
 
 def get_datasets(data_filters):
@@ -107,7 +131,7 @@ def get_datasets(data_filters):
 
     logger.info("Getting dataset data_indiv")
     data_indiv, data_indiv_stats = get_data(
-        TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_bl"]["file_path"],
+        TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_bl"]["dir_path"],
         data_filters=data_filters,
         agg_stats_kwargs=TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_bl"][
             "agg_stats_kwargs"
@@ -117,7 +141,7 @@ def get_datasets(data_filters):
 
     logger.info("Getting dataset data_group")
     data_group, data_group_stats = get_data(
-        TRAJECTORYTOOLS_DATASETS_INFO["tr_group_bl"]["file_path"],
+        TRAJECTORYTOOLS_DATASETS_INFO["tr_group_bl"]["dir_path"],
         data_filters=data_filters,
         agg_stats_kwargs=TRAJECTORYTOOLS_DATASETS_INFO["tr_group_bl"][
             "agg_stats_kwargs"
@@ -127,7 +151,7 @@ def get_datasets(data_filters):
 
     logger.info("Getting dataset data_indiv_nb")
     data_indiv_nb, data_indiv_nb_stats = get_data(
-        TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_nb_bl"]["file_path"],
+        TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_nb_bl"]["dir_path"],
         data_filters=data_filters,
         agg_stats_kwargs=TRAJECTORYTOOLS_DATASETS_INFO["tr_indiv_nb_bl"][
             "agg_stats_kwargs"
@@ -298,10 +322,6 @@ def generate_variables_dataset(
 
                 _add_normed_positions(tr_vars_df)
 
-                # tr_vars_df = add_line_and_genotype_info(
-                #     tr_vars_df.reset_index(), videos_table, animals_table
-                # )
-
                 logger.info(f"Saving at {save_dir}")
                 tr_vars_df.to_pickle(os.path.join(save_dir, file_name))
                 tr_row["file"] = file_name
@@ -317,11 +337,13 @@ def generate_variables_dataset(
     return current_index
 
 
-def load_dataset(dataset_path, video_filters=None, videos_table=None, animals_table=None):
-    
+def load_dataset(
+    dataset_path, video_filters=None, videos_table=None, animals_table=None
+):
+
     if videos_table is None:
         videos_table = pd.read_csv(conf.VIDEOS_INDEX_FILE_NAME)
-        
+
     if animals_table is None:
         animals_table = pd.read_csv(conf.ANIMALS_INDEX_FILE_PATH)
 
@@ -332,8 +354,27 @@ def load_dataset(dataset_path, video_filters=None, videos_table=None, animals_ta
         filter_common = None
 
     data = read_all(dataset_path, filter_common)
-    
-    data = add_line_and_genotype_info(
-        data.reset_index(), videos_table, animals_table
-    )
+    if not data.empty:
+        data = add_line_and_genotype_info(
+            data.reset_index(), videos_table, animals_table
+        )
+        logger.info("Adding info columns")
+        if "indiv" in dataset_path:
+            data["genotype_group_genotype"] = (
+                data["genotype_group"] + "-" + data["genotype"]
+            )
+            data["trial_uid_id"] = (
+                data["trial_uid"] + "_" + data["identity"].astype(str)
+            )
+        if "indiv_nb" in dataset_path:
+            data["genotype_group_genotype_nb"] = (
+                data["genotype_group"] + "-" + data["genotype_nb"]
+            )
+            data["trial_uid_id_nb"] = (
+                data["trial_uid"] + "_" + data["identity_nb"].astype(str)
+            )
+            data["focal_nb_genotype"] = (
+                data["genotype"] + "-" + data["genotype_nb"]
+            )
+        logger.info("Added")
     return data
