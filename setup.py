@@ -19,6 +19,7 @@ setup(
         "scripts/mic_8_get_per_animal_stats_dataset.py",
         "scripts/mic_9_plot_summary_figures.py",
         "scripts/mic_10_plot_outliers.py",
+        "scripts/mic_11_plot_variable_summary.py",
     ],
     zip_safe=False,
 )

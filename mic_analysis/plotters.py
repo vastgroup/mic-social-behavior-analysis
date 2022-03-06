@@ -18,12 +18,8 @@ from trajectorytools.plot import plot_polar_histogram, polar_histogram
 
 from .datasets import TRAJECTORYTOOLS_DATASETS_INFO, get_partition_datasets
 from .stats import _compute_groups_stats, _get_num_data_points
-from .string_infos import (
-    get_animal_info_str,
-    get_focal_nb_info,
-    get_partition_info_str,
-    get_video_info_str,
-)
+from .string_infos import (get_animal_info_str, get_focal_nb_info,
+                           get_partition_info_str, get_video_info_str)
 from .utils import data_filter
 from .variables import all_variables_names_enhanced
 
@@ -1346,15 +1342,16 @@ def plot_summary_video(
             fig.savefig(fig_save_path_pdf)
             plt.close()
 
-    fig_save_path_png = os.path.join(save_path, f"{video_uid}_indiv_nb.png")
-    fig_save_path_pdf = os.path.join(save_path, f"{video_uid}_indiv_nb.pdf")
-    files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
-        fig_save_path_pdf
-    )
-    if not files_exists or replot:
-        for animal_uid in datasets_partition["data_indiv_nb"][
-            animal_col
-        ].unique():
+    
+    for animal_uid in datasets_partition["data_indiv_nb"][
+        animal_col
+    ].unique():
+        fig_save_path_png = os.path.join(save_path, f"{animal_uid}_indiv_nb.png")
+        fig_save_path_pdf = os.path.join(save_path, f"{animal_uid}_indiv_nb.pdf")
+        files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
+            fig_save_path_pdf
+        )
+        if not files_exists or replot:
             animal_nb_data = datasets_partition["data_indiv_nb"][
                 datasets_partition["data_indiv_nb"][animal_col] == animal_uid
             ]

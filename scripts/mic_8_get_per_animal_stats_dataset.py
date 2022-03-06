@@ -31,12 +31,11 @@ for name, dataset_info in TRAJECTORYTOOLS_DATASETS_INFO.items():
         logger.info("Loaded")
 
         if not data.empty:
-            if "WT_WT" in data["genotype_group"]:
+            if "WT_WT" in data["genotype_group"].unique():
                 normalizing_genotype_group = "WT_WT"
-            elif "HET_HET" in data["genotype_group"]:
+            elif "HET_HET" in data["genotype_group"].unique():
                 normalizing_genotype_group = "HET_HET"
             else:
-                # TODO: fix this
                 normalizing_genotype_group = "HET_HET"
             data = standardize_replicate_data_wrt_het(
                 data, normalizing_genotype_group=normalizing_genotype_group

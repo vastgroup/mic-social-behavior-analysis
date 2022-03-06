@@ -250,8 +250,10 @@ GROUP_VARIABLES_TO_DISCARD = ["average_local_polarization"]
 # Stats
 AGGREGATION_STATS = {
     "default": ["median", "mean", "std"],
-    "distance_travelled": ["max"],
+    "distance_travelled": ["median", "mean", "max"],
     "nb_angle": [ratio_in_front, circmean, circstd],
+    "nb_angle_diff": [ratio_in_front, circmean, circstd],
+    "nb_angle_standardized": [ratio_in_front, circmean, circstd],
 }
 AGGREGATION_COLUMNS = {
     "indiv": [
