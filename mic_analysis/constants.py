@@ -472,5 +472,6 @@ INDIV_NB_BOXPLOT_KWARGS = {
     "whis": 1.5,
 }
 
+# TODO: Move this somewhere else in this file
 RATIO_Y_OFFSET = 0.1
 VARIABLE_RATIO_Y_OFFSET = 0.2
