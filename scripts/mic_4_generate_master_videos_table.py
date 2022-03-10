@@ -70,7 +70,7 @@ videos_to_retrack = videos_table[
         "manual_id_last_fish",
     ]
     + conf.TRACKING_STATE_COLUMNS
-    + ["valid_tracking", "valid_for_analysis"]
+    + conf.ID_LAST_FISH_STATE_COLUMNS
 ].sort_values(
     [
         "folder_name_track",
@@ -88,4 +88,4 @@ videos_to_retrack.to_csv(
     index=False,
 )
 
-# TODO: Report of value counts per sanity validity variable for videos 
+# TODO: Report of value counts per sanity validity variable for videos

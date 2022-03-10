@@ -214,22 +214,22 @@ TRACKING_STATE_COLUMNS = [
 ID_LAST_FISH_STATE_COLUMNS = [
     "valid_id_last_fish",
     "valid_certainty_id_last_fish",
-    # "same_id_last_fish",
 ]
-
-FOR_ANALYDID_COLUMNS = TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS
 
 NO_ID_LAST_FISH_FILL_VALUE = 0
 
+# TODO: Document well meaning of thresholds. In general all constants
 THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS = 0
 THRESHOLD_MEAN_ID_PROBABILITIES = 0.99
 THRESHOLD_ACCURACY = 0.98
 THRESHOLD_RATIO_TRACKED = 0.98
 THRESHOLD_CERTAINTY_ID_LAST_FISH = 0.90
 
+
+# TODO: This variable should be dependent on the experiment type
 NUM_FRAMES_FOR_ANALYSIS = 18000
 
-
+# TODO: be sure that it is used in all boxplots
 COLORS = {
     "WT_WT-WT": "k",
     "WT_HET-WT": "k",
@@ -267,7 +267,7 @@ GROUP_VARIABLES_TO_DISCARD = ["average_local_polarization"]
 # Stats
 # TODO: Agreggate speed by freezing function
 AGGREGATION_STATS = {
-    "default": ["median", "mean", "std"],
+    "default": ["median", "mean", "std"], # TODO: remove median and mea
     "distance_travelled": ["median", "mean", "max"],
     "nb_angle": [ratio_in_front, circmean, circstd],
     "nb_angle_diff": [ratio_in_front, circmean, circstd],
@@ -386,7 +386,7 @@ STD_STATS_CONFIG = {
         "method": "approximate",
         "num_rounds": 10000,
         "func": "std",
-        "paired": False,
+        "paired": False, # TODO: Check that when needed uses paired test
     },
 }
 
@@ -460,7 +460,7 @@ DATA_FILTERS = {
 INDIV_BOXPLOT_KWARGS = {
     "x": "genotype_group_genotype",
     "palette": COLORS,
-    "whis": 1.5,
+    "whis": 1.5, # TODO: Modify when considering manual outliers in final plots
 }
 GROUP_BOXPLOT_KWARGS = {
     "x": "genotype_group",

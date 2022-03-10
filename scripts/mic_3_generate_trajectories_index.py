@@ -114,3 +114,5 @@ for root, dirs, files in os.walk(conf.TRACKING_DATA_FOLDER_PATH):
         trajectories_info.append(trajectory_info)
 trajectories_table = pd.DataFrame(trajectories_info)
 trajectories_table.to_csv(conf.TRAJECTORIES_INDEX_FILE_NAME, index=False)
+
+# TODO: warning if not trajectories found
