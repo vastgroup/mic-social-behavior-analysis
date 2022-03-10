@@ -18,8 +18,12 @@ from trajectorytools.plot import plot_polar_histogram, polar_histogram
 
 from .datasets import TRAJECTORYTOOLS_DATASETS_INFO, get_partition_datasets
 from .stats import _compute_groups_stats, _get_num_data_points
-from .string_infos import (get_animal_info_str, get_focal_nb_info,
-                           get_partition_info_str, get_video_info_str)
+from .string_infos import (
+    get_animal_info_str,
+    get_focal_nb_info,
+    get_partition_info_str,
+    get_video_info_str,
+)
 from .utils import data_filter
 from .variables import all_variables_names_enhanced
 
@@ -60,6 +64,71 @@ def _add_num_data_points(
             if y - y_offset < y_min:
                 ax.set_ylim([y - y_offset, y_max])
             y_min, y_max = ax.get_ylim()
+
+
+def _get_x_group(group, order):
+    x_value = group
+    x = order.index(x_value)
+    return x
+
+
+def _plot_var_stat(ax, var_stat, y_line_stat, order, y_offset, y_lim):
+    x_group_a = _get_x_group(
+        var_stat["group_a"],
+        order,
+    )
+    x_group_b = _get_x_group(
+        var_stat["group_b"],
+        order,
+    )
+    alpha = 0.5 if var_stat["p_value"] > 0.05 else 1
+    ax.plot([x_group_a, x_group_b], [y_line_stat] * 2, "k-", alpha=alpha)
+    x_text = np.mean([x_group_a, x_group_b])
+    ax.text(
+        x_text,
+        y_line_stat + conf.RATIO_Y_OFFSET * y_offset,
+        f"{var_stat['value']:.2f}, {var_stat['p_value']:.4f}",
+        ha="center",
+        va="bottom",
+        alpha=alpha,
+    )
+    y_min, y_max = y_lim
+    ax.plot([x_group_a], [var_stat["stat_a"]], "ok")
+    ax.plot([x_group_b], [var_stat["stat_b"]], "ok")
+    if y_line_stat + y_offset > y_max:
+        ax.set_ylim([y_min, y_line_stat + y_offset])
+
+
+def _plot_var_stats(
+    ax,
+    data,
+    var_stats,
+    y_var,
+    order,
+    y_lim=None,
+    y_offset=None,
+):
+    if y_lim is None:
+        y_lim = ax.get_ylim()
+
+    y_start = data[y_var].max() + y_offset * 0.5
+
+    actual_plot_level = 0
+    last_level = 0
+    for i, pair_stat in enumerate(var_stats):
+        if pair_stat["plot_level"] != last_level:
+            actual_plot_level += 1
+            last_level = pair_stat["plot_level"]
+        y_line_stat = y_start + actual_plot_level * y_offset
+        _plot_var_stat(
+            ax,
+            pair_stat,
+            y_line_stat,
+            order,
+            y_offset,
+            y_lim,
+        )
+        y_lim = ax.get_ylim()
 
 
 def _boxplot_one_variable(ax, data, boxplot_kwargs):
@@ -121,72 +190,6 @@ def _boxplot_axes_one_variable(ax, data, variable, how="h", add_text=False):
             f"mean={mean:.3f}, median={median:.3f}, q1={q1:.3f}, q3={q3:.3f}"
         )
         ax.set_title(str_)
-
-
-def _get_x_group(group, order):
-    x_value = group
-    x = order.index(x_value)
-    return x
-
-
-def _plot_var_stat(ax, var_stat, y_line_stat, order, y_offset, y_lim):
-    x_group_a = _get_x_group(
-        var_stat["group_a"],
-        order,
-    )
-    x_group_b = _get_x_group(
-        var_stat["group_b"],
-        order,
-    )
-    alpha = 0.5 if var_stat["p_value"] > 0.05 else 1
-    ax.plot([x_group_a, x_group_b], [y_line_stat] * 2, "k-", alpha=alpha)
-    x_text = np.mean([x_group_a, x_group_b])
-    ax.text(
-        x_text,
-        y_line_stat + conf.RATIO_Y_OFFSET * y_offset,
-        f"{var_stat['value']:.2f}, {var_stat['p_value']:.4f}",
-        ha="center",
-        va="bottom",
-        alpha=alpha,
-    )
-    y_min, y_max = y_lim
-    ax.plot([x_group_a], [var_stat["stat_a"]], "ok")
-    ax.plot([x_group_b], [var_stat["stat_b"]], "ok")
-    if y_line_stat + y_offset > y_max:
-        ax.set_ylim([y_min, y_line_stat + y_offset])
-
-
-def _plot_var_stats(
-    ax,
-    data,
-    var_stats,
-    y_var,
-    order,
-    y_lim=None,
-    y_offset=None,
-):
-    if y_lim is None:
-        y_lim = ax.get_ylim()
-
-    # y_offset = _get_y_offset(ax)
-    y_start = data[y_var].max()
-
-    actual_plot_level = 0
-    last_level = 0
-    for i, pair_stat in enumerate(var_stats):
-        if pair_stat["plot_level"] != last_level:
-            actual_plot_level += 1
-            last_level = pair_stat["plot_level"]
-        y_line_stat = y_start + actual_plot_level * y_offset
-        _plot_var_stat(
-            ax,
-            pair_stat,
-            y_line_stat,
-            order,
-            y_offset,
-            y_lim,
-        )
-        y_lim = ax.get_ylim()
 
 
 def _boxplots_one_variable_with_stats(
@@ -252,49 +255,6 @@ def _update_order(data, boxplot_kwargs, valid_x_values):
     )
 
 
-def boxplot_variables_partition(
-    axs,
-    data,
-    variables,
-    title,
-    boxplot_kwargs,
-    pairs_of_groups_for_stats,
-    stats_kwargs,
-    valid_x_values=conf.GENOTYPE_GROUP_GENOTYPE_ORDER,
-    variables_ylims=None,
-    varialbes_y_offsets=None,
-):
-    assert len(axs) == len(variables), f"{len(variables)} {len(axs)}"
-    num_data_points = _get_num_data_points(data, boxplot_kwargs)
-    _update_order(data, boxplot_kwargs, valid_x_values)
-
-    all_var_stats = []
-    all_outliers = []
-
-    for i, (ax, variable) in enumerate(zip(axs, variables)):
-        boxplot_kwargs.update({"y": variable})
-        var_stats, outliers, var_ylim = _boxplots_one_variable_with_stats(
-            ax,
-            data,
-            variable,
-            num_data_points,
-            boxplot_kwargs,
-            stats_kwargs,
-            pairs_of_groups_for_stats,
-            variable_ylim=variables_ylims[variable],
-            variable_y_offset=varialbes_y_offsets[variable],
-        )
-        if i == 0:
-            ax.set_title(title)
-        variables_ylims[variable] = var_ylim
-        all_var_stats.extend(var_stats)
-        all_outliers.extend(outliers)
-    all_var_stats = pd.DataFrame(all_var_stats)
-    all_outliers = pd.concat(all_outliers)
-    all_outliers.drop_duplicates(inplace=True)
-    return all_var_stats, all_outliers, variables_ylims
-
-
 def _get_variables_ylims_and_offsets(data_stats, variables=None):
     if variables is None:
         if isinstance(data_stats.columns, pd.MultiIndex):
@@ -319,118 +279,6 @@ def _get_variables_ylims_and_offsets(data_stats, variables=None):
             np.abs(y_max - y_min) * conf.VARIABLE_RATIO_Y_OFFSET
         )
     return variables_ylims, varialbes_y_offsets
-
-
-def plot(config_dict):
-    logger.info(f"Plotting with {config_dict}")
-    data_info = TRAJECTORYTOOLS_DATASETS_INFO[
-        config_dict["data_variables_group"]
-    ]
-    data, data_stats = get_data(
-        data_info["file_path"],
-        config_dict["data_filters"],
-        {
-            "groupby": config_dict["groupby_cols"],
-            "agg_rule": config_dict["agg_rule"],
-        },
-    )
-    assert config_dict["rows_partitioned_by"] in data_stats
-    partitions = data_stats[config_dict["rows_partitioned_by"]].unique()
-    variables = config_dict["variables"]
-    logger.info("Preparing figgure")
-
-    fig, axs = plt.subplots(
-        len(variables),
-        len(partitions),
-        figsize=(5 * len(partitions), 6 * len(variables)),
-        sharey="row",
-    )
-    plt.subplots_adjust(wspace=0.4, hspace=0.5)
-
-    variables_ylims, variables_y_offsets = _get_variables_ylims_and_offsets(
-        data_stats
-    )
-    all_var_stats = []
-    all_outliers = []
-    for axs_col, partition in tqdm(zip(axs.T, partitions), desc="Plotting..."):
-        logger.info(f"Plotting partition {partition}")
-        partition_data = data_stats[
-            data_stats[config_dict["rows_partitioned_by"]] == partition
-        ]
-        (
-            all_var_stats_,
-            all_outliers_,
-            variables_ylims,
-        ) = boxplot_variables_partition(
-            axs_col,
-            partition_data,
-            variables,
-            partition,
-            config_dict["boxplot_kwargs"],
-            config_dict["pairs_of_groups_for_stats"],
-            config_dict["stats_kwargs"],
-            variables_ylims=variables_ylims,
-            varialbes_y_offsets=variables_y_offsets,
-        )
-        all_var_stats_["partition"] = [partition] * len(all_var_stats_)
-        all_var_stats.append(all_var_stats_)
-        all_outliers.append(all_outliers_)
-
-    all_var_stats = pd.concat(all_var_stats)
-    all_outliers = pd.concat(all_outliers)
-    all_outliers.drop_duplicates(inplace=True)
-
-    if not os.path.isdir(config_dict["save_path"]):
-        os.makedirs(config_dict["save_path"])
-
-    for extension in config_dict["extensions"]:
-        fig.savefig(
-            os.path.join(
-                config_dict["save_path"],
-                config_dict["file_name"] + f".{extension}",
-            )
-        )
-
-    # TODO: Factorize this into another plot
-    fig2, axs = plt.subplots(
-        len(variables), 1, figsize=(30, 10 * len(variables))
-    )
-
-    for ax, variable in zip(axs, variables):
-        _boxplot_one_variable(
-            ax,
-            data_stats,
-            {
-                "x": config_dict["rows_partitioned_by"],
-                "y": variable,
-                "hue": "genotype_group_genotype",
-                "palette": conf.COLORS,
-                "order": data_stats[
-                    config_dict["rows_partitioned_by"]
-                ].unique(),
-                "whis": 1.5,
-            },
-        )
-        _boxplot_axes_one_variable(ax, data_stats, variable)
-    for extension in config_dict["extensions"]:
-        fig2.savefig(
-            os.path.join(
-                config_dict["save_path"],
-                "vars_dist_summary" + f".{extension}",
-            )
-        )
-
-    data_stats.to_csv(
-        os.path.join(config_dict["save_path"], "data.csv"), index=False
-    )
-    all_var_stats.to_csv(
-        os.path.join(config_dict["save_path"], "stats.csv"), index=False
-    )
-    all_outliers.to_csv(
-        os.path.join(config_dict["save_path"], "outliers.csv"), index=False
-    )
-
-    return data_stats, all_var_stats, all_outliers
 
 
 ##### FIGURES PREPARATION FUNCTIONS
@@ -493,37 +341,33 @@ def _prepare_video_indiv_nb_fig(num_variables):
     return fig, ax_relative_position, axs_variables, axs_distributions
 
 
-def _prepare_partition_indiv_vars_summary_fig(
-    num_variables, num_genotype_groups
-):
-    fig = plt.figure(constrained_layout=True, figsize=(30, 5 * num_variables))
+def __prepare_fig_axes(vars_type, num_variables, num_groups):
+    if vars_type == "indiv_nb":
+        polar = True
+    else:
+        polar = False
+    fig = plt.figure(constrained_layout=True, figsize=(30, 7 * num_variables))
     num_columns_position_hist = np.ceil(
-        (num_genotype_groups + 1) / num_variables
+        (num_groups + 1) / num_variables
     ).astype(int)
-    num_cols = 4 + num_columns_position_hist
+    num_cols = 3 + num_columns_position_hist
     num_rows = num_variables
     gs = GridSpec(num_rows, num_cols, figure=fig)
 
-    axs_order_params_dist = []
+    axs_2d_dists = []
     for row in range(num_rows):
         for col in range(num_columns_position_hist):
-            axs_order_params_dist.append(
-                fig.add_subplot(gs[row : row + 1, col : col + 1])
+            axs_2d_dists.append(
+                fig.add_subplot(gs[row : row + 1, col : col + 1], polar=polar)
             )
-    # axs_variables = []
-    axs_distributions = []
+    axs_1d_dists = []
     axs_boxplots_raw = []
-    axs_boxplots_diff = []
     axs_boxplots_standardized = []
     for i in range(num_variables):
-        # axs_variables.append(fig.add_subplot(gs[i:i+1, num_rows:num_cols-4]))
-        axs_distributions.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 4 : num_cols - 3])
-        )
-        axs_boxplots_raw.append(
+        axs_1d_dists.append(
             fig.add_subplot(gs[i : i + 1, num_cols - 3 : num_cols - 2])
         )
-        axs_boxplots_diff.append(
+        axs_boxplots_raw.append(
             fig.add_subplot(gs[i : i + 1, num_cols - 2 : num_cols - 1])
         )
         axs_boxplots_standardized.append(
@@ -531,103 +375,30 @@ def _prepare_partition_indiv_vars_summary_fig(
         )
     return (
         fig,
-        axs_order_params_dist,
-        axs_distributions,
+        axs_2d_dists,
+        axs_1d_dists,
         axs_boxplots_raw,
-        axs_boxplots_diff,
         axs_boxplots_standardized,
     )
+
+
+def _prepare_partition_indiv_vars_summary_fig(
+    num_variables, num_genotype_groups
+):
+    return __prepare_fig_axes("indiv", num_variables, num_genotype_groups)
 
 
 def _prepare_partition_group_vars_summary_fig(
     num_variables, num_genotype_groups
 ):
-    fig = plt.figure(constrained_layout=True, figsize=(30, 5 * num_variables))
-    num_columns_position_hist = np.ceil(
-        (num_genotype_groups + 1) / num_variables
-    ).astype(int)
-    num_cols = 4 + num_columns_position_hist
-    num_rows = num_variables
-    gs = GridSpec(num_rows, num_cols, figure=fig)
-
-    axs_positions_dist = []
-    for row in range(num_rows):
-        for col in range(num_columns_position_hist):
-            axs_positions_dist.append(
-                fig.add_subplot(gs[row : row + 1, col : col + 1])
-            )
-    # axs_variables = []
-    axs_distributions = []
-    axs_boxplots_raw = []
-    axs_boxplots_diff = []
-    axs_boxplots_standardized = []
-    for i in range(num_variables):
-        # axs_variables.append(fig.add_subplot(gs[i:i+1, num_rows:num_cols-4]))
-        axs_distributions.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 4 : num_cols - 3])
-        )
-        axs_boxplots_raw.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 3 : num_cols - 2])
-        )
-        axs_boxplots_diff.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 2 : num_cols - 1])
-        )
-        axs_boxplots_standardized.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 1 :])
-        )
-    return (
-        fig,
-        axs_positions_dist,
-        axs_distributions,
-        axs_boxplots_raw,
-        axs_boxplots_diff,
-        axs_boxplots_standardized,
-    )
+    return __prepare_fig_axes("group", num_variables, num_genotype_groups)
 
 
 def _prepare_partition_indiv_nb_vars_summary_fig(
     num_variables, num_focal_nb_genotype_groups
 ):
-    fig = plt.figure(constrained_layout=True, figsize=(30, 5 * num_variables))
-    num_columns_position_hist = np.ceil(
-        num_focal_nb_genotype_groups / num_variables
-    ).astype(int)
-    num_cols = 4 + num_columns_position_hist
-    num_rows = num_variables
-    gs = GridSpec(num_rows, num_cols, figure=fig)
-
-    axs_positions_dist = []
-    for row in range(num_rows):
-        for col in range(num_columns_position_hist):
-            axs_positions_dist.append(
-                fig.add_subplot(gs[row : row + 1, col : col + 1], polar=True)
-            )
-    # axs_variables = []
-    axs_distributions = []
-    axs_boxplots_raw = []
-    axs_boxplots_diff = []
-    axs_boxplots_standardized = []
-    for i in range(num_variables):
-        # axs_variables.append(fig.add_subplot(gs[i:i+1, num_rows:num_cols-4]))
-        axs_distributions.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 4 : num_cols - 3])
-        )
-        axs_boxplots_raw.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 3 : num_cols - 2])
-        )
-        axs_boxplots_diff.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 2 : num_cols - 1])
-        )
-        axs_boxplots_standardized.append(
-            fig.add_subplot(gs[i : i + 1, num_cols - 1 :])
-        )
-    return (
-        fig,
-        axs_positions_dist,
-        axs_distributions,
-        axs_boxplots_raw,
-        axs_boxplots_diff,
-        axs_boxplots_standardized,
+    return __prepare_fig_axes(
+        "indiv_nb", num_variables, num_focal_nb_genotype_groups
     )
 
 
@@ -855,7 +626,7 @@ def _plot_order_parameter_dist_per_genotype_group(data, axs):
         [ax.set_visible(False) for ax in axs[i + 2 :]]
 
 
-def _plot_polar_dist_relative_positions(data, axs_polar_plots):
+def _plot_polar_dist_relative_positions(data, axs):
     valid_focal_nb_genotype = data.focal_nb_genotype.unique()
     focal_nb_genotype_order = [
         fng
@@ -891,7 +662,7 @@ def _plot_polar_dist_relative_positions(data, axs_polar_plots):
         vmax = np.max([vmax, np.max(mean_pos_hist)])
 
     for i, (focal_nb_genotype, pos_hist) in enumerate(pos_hists_arrs.items()):
-        ax = axs_polar_plots[i]
+        ax = axs[i]
         mean_pos_hist = np.mean(pos_hist, axis=0)
         plot_polar_histogram(
             mean_pos_hist,
@@ -903,9 +674,9 @@ def _plot_polar_dist_relative_positions(data, axs_polar_plots):
             symmetric_color_limits=False,
         )
         ax.set_title(focal_nb_genotype)
-    if i + 1 < len(axs_polar_plots) - 1:
+    if i + 1 < len(axs) - 1:
         # is not the last axes
-        [ax.set_visible(False) for ax in axs_polar_plots[i + 2 :]]
+        [ax.set_visible(False) for ax in axs[i + 2 :]]
 
 
 ##### SUMMARY FIGURES
@@ -986,21 +757,29 @@ def _plot_video_indiv_nb_variables_summary(data, variables, variables_ranges):
         )
     return fig
 
-# def __plot_partition_vars_summary(
-#     data,
-#     data_stats,
-#     variables,
-#     variables_ranges,
-#     variables_stats,
-#     boxplot_kwargs, 
-#     stats_kwargs,
-     
-#     pairs_of_groups_for_stats=conf.PAIRSPAIRS_OF_GROUPS
-#     hue=None
-#     ):
+
+axes_preparation_functions = {
+    "indiv": _prepare_partition_indiv_vars_summary_fig,
+    "group": _prepare_partition_group_vars_summary_fig,
+    "indiv_nb": _prepare_partition_indiv_nb_vars_summary_fig,
+}
+
+plot_2d_dist_functions = {
+    "indiv": _plot_positions_dist_per_genotype_group,
+    "group": _plot_order_parameter_dist_per_genotype_group,
+    "indiv_nb": _plot_polar_dist_relative_positions,
+}
 
 
-def _plot_partition_indiv_vars_summary(
+plot_1d_dist_functions = {
+    "indiv": _plot_variable_1d_dist,
+    "group": _plot_variable_1d_dist,
+    "indiv_nb": _plot_variable_1d_dist,
+}
+
+
+def __plot_partition_vars_summary(
+    vars_type,
     data,
     data_stats,
     variables,
@@ -1011,22 +790,27 @@ def _plot_partition_indiv_vars_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
-    logger.info("Plotting partition_indiv_vars_summary")
+    logger.info(f"Plotting partition_{vars_type}_vars_summary")
     num_genotype_groups = len(data["genotype_group"].unique())
-    # TODO: Need to add more axes for boxplots if we consider different
-    # mean and median stats
+
+    # Pepare figure axes
+    logger.info("Preparing axes")
+    axes_preparation_func = axes_preparation_functions[vars_type]
     (
         fig,
-        axs_positions_dist,
+        axs_2d_dist,
         axs_distributions,
         axs_boxplots_raw,
-        axs_boxplots_diff,
         axs_boxplots_standardized,
-    ) = _prepare_partition_indiv_vars_summary_fig(
-        len(variables_stats), num_genotype_groups
-    )
-    _plot_positions_dist_per_genotype_group(data, axs=axs_positions_dist)
-    num_data_points = _get_num_data_points(data_stats, boxplot_kwargs)
+    ) = axes_preparation_func(len(variables_stats), num_genotype_groups)
+
+    # Plot 2d distributions
+    logger.info("Plotting 2d distributions")
+    plot_2d_dist_func = plot_2d_dist_functions[vars_type]
+    plot_2d_dist_func(data, axs=axs_2d_dist)
+
+    # Plot 1d distributions
+    logger.info("Plotting 1d distributions")
     for i, (variable, ax_dist) in enumerate(zip(variables, axs_distributions)):
         if i == 0:
             legend = True
@@ -1041,19 +825,21 @@ def _plot_partition_indiv_vars_summary(
             legend=legend,
             how="v",
         )
-    [ax.set_visible(False) for ax in axs_distributions[i + 1 :]]
+    for ax in axs_distributions[i + 1 :]:
+        ax.set_visible(False)
+
+    # Get num data points
+    logger.info("Getting num datapoints")
+    num_data_points = _get_num_data_points(data_stats, boxplot_kwargs)
+
+    # Plot boxplots
+    logger.info("Plotting boxplots")
     outliers = []
     test_stats = []
-    for i, (
-        variable,
-        ax_boxplot,
-        ax_boxplot_diff,
-        ax_boxplot_standardized,
-    ) in enumerate(
+    for i, (variable, ax_boxplot, ax_boxplot_standardized,) in enumerate(
         zip(
             variables_stats,
             axs_boxplots_raw,
-            axs_boxplots_diff,
             axs_boxplots_standardized,
         )
     ):
@@ -1065,12 +851,20 @@ def _plot_partition_indiv_vars_summary(
             variables_ylims,
             variables_y_offsets,
         ) = _get_variables_ylims_and_offsets(data_stats)
-        _update_order(data, boxplot_kwargs, conf.GENOTYPE_GROUP_GENOTYPE_ORDER)
+        if vars_type == "indiv":
+            order = conf.GENOTYPE_GROUP_GENOTYPE_ORDER
+        elif vars_type == "group":
+            order = conf.GENOTYPE_GROUP_ORDER
+        elif vars_type == "indiv_nb":
+            order = conf.FOCAL_NB_GENOTYPE_ORDER
+        else:
+            raise Exception(f"No valid vars_type {vars_type}")
+        _update_order(data, boxplot_kwargs, order)
         variable_stats = [
             variable,
             (f"{variable[0]}_standardized", variable[1]),
         ]
-        axs = [ax_boxplot, ax_boxplot_diff, ax_boxplot_standardized]
+        axs = [ax_boxplot, ax_boxplot_standardized]
         for variable_stat, ax in zip(variable_stats, axs):
             # TODO: Here loop for mean/median stats and whis=100 vs 1.5
             # TODO: Compute stats for median and stats
@@ -1093,6 +887,31 @@ def _plot_partition_indiv_vars_summary(
     return fig, outliers, test_stats
 
 
+def _plot_partition_indiv_vars_summary(
+    data,
+    data_stats,
+    variables,
+    variables_ranges,
+    variables_stats,
+    boxplot_kwargs,
+    stats_kwargs,
+    pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
+    hue=None,
+):
+    return __plot_partition_vars_summary(
+        "indiv",
+        data,
+        data_stats,
+        variables,
+        variables_ranges,
+        variables_stats,
+        boxplot_kwargs,
+        stats_kwargs,
+        pairs_of_groups_for_stats,
+        hue,
+    )
+
+
 def _plot_partition_group_vars_summary(
     data,
     data_stats,
@@ -1104,82 +923,18 @@ def _plot_partition_group_vars_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
-    logger.info("Plotting partition_group_vars_summary")
-    num_genotype_groups = len(data["genotype_group"].unique())
-    (
-        fig,
-        axs_order_params_dist,
-        axs_distributions,
-        axs_boxplots_raw,
-        axs_boxplots_diff,
-        axs_boxplots_standardized,
-    ) = _prepare_partition_group_vars_summary_fig(
-        len(variables_stats), num_genotype_groups
+    return __plot_partition_vars_summary(
+        "group",
+        data,
+        data_stats,
+        variables,
+        variables_ranges,
+        variables_stats,
+        boxplot_kwargs,
+        stats_kwargs,
+        pairs_of_groups_for_stats,
+        hue,
     )
-    _plot_order_parameter_dist_per_genotype_group(data, axs_order_params_dist)
-    num_data_points = _get_num_data_points(data_stats, boxplot_kwargs)
-    outliers = []
-    test_stats = []
-    for i, (variable, ax_dist) in enumerate(zip(variables, axs_distributions)):
-        if i == 0:
-            legend = True
-        else:
-            legend = False
-        _plot_variable_1d_dist(
-            data,
-            variable,
-            variables_ranges,
-            ax=ax_dist,
-            hue=hue,
-            legend=legend,
-            how="v",
-        )
-    [ax.set_visible(False) for ax in axs_distributions[i + 1 :]]
-    for i, (
-        variable,
-        ax_boxplot,
-        ax_boxplot_diff,
-        ax_boxplot_standardized,
-    ) in enumerate(
-        zip(
-            variables_stats,
-            axs_boxplots_raw,
-            axs_boxplots_diff,
-            axs_boxplots_standardized,
-        )
-    ):
-        if i == 0:
-            legend = True
-        else:
-            legend = False
-        (
-            variables_ylims,
-            variables_y_offsets,
-        ) = _get_variables_ylims_and_offsets(data_stats)
-        _update_order(data, boxplot_kwargs, conf.GENOTYPE_GROUP_ORDER)
-        variable_stats = [
-            variable,
-            (f"{variable[0]}_standardized", variable[1]),
-        ]
-        axs = [ax_boxplot, ax_boxplot_diff, ax_boxplot_standardized]
-        for variable_stat, ax in zip(variable_stats, axs):
-            var_test_stats, outliers_, _ = _boxplots_one_variable_with_stats(
-                ax,
-                data_stats,
-                variable_stat,
-                num_data_points,
-                boxplot_kwargs,
-                stats_kwargs,
-                pairs_of_groups_for_stats,
-                variable_ylim=None,
-                variable_y_offset=variables_y_offsets[variable_stat],
-            )
-            outliers.extend(outliers_)
-            test_stats.extend(var_test_stats)
-    outliers = pd.concat(outliers)
-    outliers.drop_duplicates(inplace=True)
-    test_stats = pd.DataFrame(test_stats)
-    return fig, outliers, test_stats
 
 
 def _plot_partition_indiv_nb_summary(
@@ -1193,90 +948,18 @@ def _plot_partition_indiv_nb_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
-    logger.info("Plotting partition_indiv_nb_summary")
-    num_focal_nb_genotype_groups = len(data["focal_nb_genotype"].unique())
-    (
-        fig,
-        axs_polar_plots,
-        axs_distributions,
-        axs_boxplots_raw,
-        axs_boxplots_diff,
-        axs_boxplots_standardized,
-    ) = _prepare_partition_indiv_nb_vars_summary_fig(
-        len(variables_stats), num_focal_nb_genotype_groups
+    return __plot_partition_vars_summary(
+        "indiv_nb",
+        data,
+        data_stats,
+        variables,
+        variables_ranges,
+        variables_stats,
+        boxplot_kwargs,
+        stats_kwargs,
+        pairs_of_groups_for_stats,
+        hue,
     )
-    _plot_polar_dist_relative_positions(data, axs_polar_plots)
-    num_data_points = _get_num_data_points(data_stats, boxplot_kwargs)
-    for i, (variable, ax_dist) in enumerate(zip(variables, axs_distributions)):
-        if i == 0:
-            legend = True
-        else:
-            legend = False
-        _plot_variable_1d_dist(
-            data,
-            variable,
-            variables_ranges,
-            ax=ax_dist,
-            hue=hue,
-            legend=legend,
-            how="v",
-        )
-    [ax.set_visible(False) for ax in axs_distributions[i + 1 :]]
-    outliers = []
-    test_stats = []
-    for i, (
-        variable,
-        ax_boxplot,
-        ax_boxplot_diff,
-        ax_boxplot_standardized,
-    ) in enumerate(
-        zip(
-            variables_stats,
-            axs_boxplots_raw,
-            axs_boxplots_diff,
-            axs_boxplots_standardized,
-        )
-    ):
-        if i == 0:
-            legend = True
-        else:
-            legend = False
-        (
-            variables_ylims,
-            variables_y_offsets,
-        ) = _get_variables_ylims_and_offsets(data_stats)
-        _update_order(data, boxplot_kwargs, conf.FOCAL_NB_GENOTYPE_ORDER)
-        variable_stats = [
-            variable,
-            (f"{variable[0]}_standardized", variable[1]),
-        ]
-        axs = [ax_boxplot, ax_boxplot_diff, ax_boxplot_standardized]
-
-        for variable_stat, ax in zip(variable_stats, axs):
-            if variable_stat in data_stats.columns:
-                (
-                    var_test_stats,
-                    outliers_,
-                    _,
-                ) = _boxplots_one_variable_with_stats(
-                    ax,
-                    data_stats,
-                    variable_stat,
-                    num_data_points,
-                    boxplot_kwargs,
-                    stats_kwargs,
-                    pairs_of_groups_for_stats,
-                    variable_ylim=None,
-                    variable_y_offset=variables_y_offsets[variable_stat],
-                )
-                outliers.extend(outliers_)
-                test_stats.extend(var_test_stats)
-            else:
-                ax.set_visible(False)
-    outliers = pd.concat(outliers)
-    outliers.drop_duplicates(inplace=True)
-    test_stats = pd.DataFrame(test_stats)
-    return fig, outliers, test_stats
 
 
 ###### SUMMARY PLOTS
@@ -1380,6 +1063,57 @@ def plot_summary_video(
                 plt.close()
 
 
+plot_partition_funcs = {
+    "indiv": _plot_partition_indiv_vars_summary,
+    "group": _plot_partition_group_vars_summary,
+    "indiv_nb": _plot_partition_indiv_nb_summary,
+}
+
+
+def _plot_vars_summary_partition(
+    vars_type,
+    datasets_partition,
+    partition_col,
+    variables_to_plot,
+    variables_stats_to_plot,
+    variables_ranges,
+    boxplots_kwargs,
+    stats_kwargs,
+    hue,
+    save,
+    save_path,
+):
+    line_replicate_info_str = get_partition_info_str(
+        datasets_partition[f"data_{vars_type}"], partition_col
+    )
+    fig, outliers, test_stats = plot_partition_funcs[vars_type](
+        datasets_partition[f"data_{vars_type}"],
+        datasets_partition[f"data_{vars_type}_stats"],
+        variables_to_plot,
+        variables_ranges,
+        variables_stats_to_plot,
+        boxplots_kwargs,
+        stats_kwargs,
+        hue=hue,
+    )
+    outliers["var_type"] = [vars_type] * len(outliers)
+    test_stats["var_type"] = [vars_type] * len(test_stats)
+    fig.suptitle(line_replicate_info_str)
+    if save:
+        fig_save_path_png = os.path.join(save_path, f"{vars_type}_vars.png")
+        fig_save_path_pdf = os.path.join(save_path, f"{vars_type}_vars.pdf")
+        logger.info("Saving figures outliers and stats")
+        fig.savefig(fig_save_path_png)
+        fig.savefig(fig_save_path_pdf)
+        outliers.to_csv(
+            os.path.join(save_path, f"{vars_type}_outliers.csv"), index=False
+        )
+        test_stats.to_csv(
+            os.path.join(save_path, f"{vars_type}_test_stats.csv"), index=False
+        )
+    return outliers, test_stats
+
+
 def plot_summary_partition(
     datasets_info,
     videos_table,
@@ -1392,7 +1126,7 @@ def plot_summary_partition(
     stats_kwargs=conf.MEAN_STATS_CONFIG,
     save=False,
     save_path=".",
-    replot=False,
+    replot=False,  # TODO: Fix replot
 ):
 
     trials_uids = videos_table[
@@ -1407,96 +1141,51 @@ def plot_summary_partition(
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
 
+        vars_summary_plot_info = {
+            "indiv": {
+                "variables_to_plot": conf.INDIVIDUAL_VARIABLES_TO_PLOT,
+                "variables_stats_to_plot": conf.INDIVIDUAL_VARIABLES_STATS_TO_PLOT,
+                "boxplot_kwargs": indiv_boxplot_kwargs,
+                "hue": "genotype_group_genotype",
+            },
+            "group": {
+                "variables_to_plot": conf.GROUP_VARIABLES_TO_PLOT,
+                "variables_stats_to_plot": conf.GROUP_VARIABLES_STATS_TO_PLOT,
+                "boxplot_kwargs": group_boxplot_kwargs,
+                "hue": "genotype_group",
+            },
+            "indiv_nb": {
+                "variables_to_plot": conf.INDIVIDUAL_NB_VARIABLES_TO_PLOT,
+                "variables_stats_to_plot": conf.INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT,
+                "boxplot_kwargs": indiv_nb_boxplot_kwargs,
+                "hue": "focal_nb_genotype",
+            },
+        }
+
         all_outliers = []
         all_test_stats = []
 
-        fig_save_path_png = os.path.join(save_path, f"indiv_vars.png")
-        fig_save_path_pdf = os.path.join(save_path, f"indiv_vars.pdf")
-        line_replicate_info_str = get_partition_info_str(
-            datasets_partition["data_indiv"], partition_col
-        )
-        fig, outliers, test_stats = _plot_partition_indiv_vars_summary(
-            datasets_partition["data_indiv"],
-            datasets_partition["data_indiv_stats"],
-            conf.INDIVIDUAL_VARIABLES_TO_PLOT,
-            variables_ranges,
-            conf.INDIVIDUAL_VARIABLES_STATS_TO_PLOT,
-            indiv_boxplot_kwargs,
-            stats_kwargs,
-            hue="genotype_group_genotype",
-        )
-        outliers["var_type"] = ["indiv"] * len(outliers)
-        test_stats["var_type"] = ["indiv"] * len(test_stats)
-        all_outliers.append(outliers)
-        all_test_stats.append(test_stats)
-        fig.suptitle(line_replicate_info_str)
-        if save:
-            logger.info("Saving figures outliers and stats")
-            fig.savefig(fig_save_path_png)
-            fig.savefig(fig_save_path_pdf)
-            outliers.to_csv(
-                os.path.join(save_path, "indiv_outliers.csv"), index=False
-            )
-            test_stats.to_csv(
-                os.path.join(save_path, "indiv_test_stats.csv"), index=False
-            )
+        for vars_type, plot_info in vars_summary_plot_info.items():
 
-        fig, outliers, test_stats = _plot_partition_group_vars_summary(
-            datasets_partition["data_group"],
-            datasets_partition["data_group_stats"],
-            conf.GROUP_VARIABLES_TO_PLOT,
-            variables_ranges,
-            conf.GROUP_VARIABLES_STATS_TO_PLOT,
-            group_boxplot_kwargs,
-            stats_kwargs,
-            hue="genotype_group",
-        )
-        outliers["var_type"] = ["group"] * len(outliers)
-        test_stats["var_type"] = ["group"] * len(test_stats)
-        all_outliers.append(outliers)
-        all_test_stats.append(test_stats)
-
-        fig.suptitle(line_replicate_info_str)
-        if save:
-            logger.info("Saving figures outliers and stats")
-            fig.savefig(os.path.join(save_path, f"group_vars.png"))
-            fig.savefig(os.path.join(save_path, f"group_vars.pdf"))
-            outliers.to_csv(
-                os.path.join(save_path, "group_outliers.csv"), index=False
+            outliers, test_stats = _plot_vars_summary_partition(
+                vars_type,
+                datasets_partition,
+                partition_col,
+                plot_info["variables_to_plot"],
+                plot_info["variables_stats_to_plot"],
+                variables_ranges,
+                plot_info["boxplot_kwargs"],
+                stats_kwargs,
+                hue=plot_info["hue"],
+                save=save,
+                save_path=save_path,
             )
-            test_stats.to_csv(
-                os.path.join(save_path, "group_test_stats.csv"), index=False
-            )
-
-        fig, outliers, test_stats = _plot_partition_indiv_nb_summary(
-            datasets_partition["data_indiv_nb"],
-            datasets_partition["data_indiv_nb_stats"],
-            conf.INDIVIDUAL_NB_VARIABLES_TO_PLOT,
-            variables_ranges,
-            conf.INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT,
-            indiv_nb_boxplot_kwargs,
-            stats_kwargs,
-            hue="focal_nb_genotype",
-        )
-        outliers["var_type"] = ["indiv_nb"] * len(outliers)
-        test_stats["var_type"] = ["indiv_nb"] * len(test_stats)
-        all_outliers.append(outliers)
-        all_test_stats.append(test_stats)
-
-        fig.suptitle(line_replicate_info_str)
-        if save:
-            logger.info("Saving figures outliers and stats")
-            fig.savefig(os.path.join(save_path, f"indiv_nb_vars.png"))
-            fig.savefig(os.path.join(save_path, f"indiv_nb_vars.pdf"))
-            outliers.to_csv(
-                os.path.join(save_path, "indiv_nb_outliers.csv"), index=False
-            )
-            test_stats.to_csv(
-                os.path.join(save_path, "indiv_nb_test_stats.csv"), index=False
-            )
+            all_outliers.append(outliers)
+            all_test_stats.append(test_stats)
 
         all_outliers = pd.concat(all_outliers)
         all_test_stats = pd.concat(all_test_stats)
+
         if save:
             all_outliers.to_csv(
                 os.path.join(save_path, "all_outliers.csv"), index=False
@@ -1513,13 +1202,18 @@ def plot_summary_partition(
 
 # TODO: pass list of outliers to ignore and replot in a new folder
 def plot_summary_all_partitions(
-    datasets_info, videos_table, variables_ranges, partition_col, replot
+    datasets_info,
+    videos_table,
+    variables_ranges,
+    partition_col,
+    replot,
+    folder_suffix,
 ):
 
     possible_partition_uids = natsorted(videos_table[partition_col].unique())
 
     save_path = os.path.join(
-        conf.GENERATED_FIGURES_PATH, f"summary_{partition_col}"
+        conf.GENERATED_FIGURES_PATH, f"summary_{partition_col}{folder_suffix}"
     )
     if not os.path.isdir(save_path):
         os.makedirs(save_path)

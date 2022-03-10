@@ -27,7 +27,8 @@ args = parser.parse_args()
 
 data_filters = []
 variables_ranges = get_variables_ranges(TRAJECTORYTOOLS_DATASETS_INFO)
-partition_col = "line_experiment"
+# TODO: externilize partition_col as a argument, add suffix to folder, ...
+partition_col = args.partition_col
 logger.info("Loading videos table")
 videos_table = pd.read_csv(conf.VIDEOS_INDEX_FILE_NAME)
 

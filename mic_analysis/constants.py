@@ -5,6 +5,8 @@ from mlxtend.evaluate import permutation_test
 
 from mic_analysis.utils import circmean, circstd, ratio_in_front
 
+# TODO: Mark variables that can be modified in local settings
+
 NUM_JOBS_PARALLELIZATION = 6
 
 # TRAJECTORIES CONSTANTS
@@ -360,25 +362,32 @@ PAIRS_OF_GROUPS = (
     + TEST_PAIRS_GROUPS["group"]
 )
 # This are arguments to the permutation_test function in the mlxtend python library
-MEAN_STATS_KWARGS = {
-    "method": "approximate",
-    "num_rounds": 10000,
-    "func": "mean",
-    "paired": False,
-}
-MEDIAN_STATS_KWARGS = {
-    "method": "approximate",
-    "num_rounds": 10000,
-    "func": "median",
-    "paired": False,
-}
 MEAN_STATS_CONFIG = {
     "test_func": permutation_test,
-    "test_func_kwargs": MEAN_STATS_KWARGS,
+    "test_func_kwargs": {
+        "method": "approximate",
+        "num_rounds": 10000,
+        "func": "mean",
+        "paired": False,
+    },
 }
 MEDIAN_STATS_CONFIG = {
     "test_func": permutation_test,
-    "test_func_kwargs": MEDIAN_STATS_KWARGS,
+    "test_func_kwargs": {
+        "method": "approximate",
+        "num_rounds": 10000,
+        "func": "median",
+        "paired": False,
+    },
+}
+STD_STATS_CONFIG = {
+    "test_func": permutation_test,
+    "test_func_kwargs": {
+        "method": "approximate",
+        "num_rounds": 10000,
+        "func": "std",
+        "paired": False,
+    },
 }
 
 
@@ -392,7 +401,7 @@ INDIVIDUAL_VARIABLES_STATS_TO_PLOT = [
     ("normed_distance_to_origin", "median"),
     ("normed_distance_to_origin", "mean"),
     ("normed_distance_to_origin", "std"),
-    # ("angular_position", "circmean"), # TODO: Plot these ones after standarization 
+    # ("angular_position", "circmean"), # TODO: Plot these ones after standarization
     # ("angular_position", "circstd"),
     ("speed", "median"),
     ("speed", "mean"),
@@ -421,7 +430,7 @@ GROUP_VARIABLES_STATS_TO_PLOT = [
 
 INDIVIDUAL_NB_VARIABLES_TO_PLOT = ["nb_angle", "nb_distance"]
 INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT = [
-    # ("nb_angle", "circmean"), # TODO: Plot these ones after standarization 
+    # ("nb_angle", "circmean"), # TODO: Plot these ones after standarization
     # ("nb_angle", "circstd"),
     ("nb_angle", "ratio_in_front"),
     ("nb_distance", "median"),
@@ -435,23 +444,16 @@ TR_INDIV_NB_BL_DIR_NAME = "tr_indiv_nb_vars_bl"
 TR_GROUP_BL_DIR_NAME = "tr_group_vars_bl"
 
 DATA_FILTERS = {
-    "experiment_1": [
-        lambda x: x.experiment_type == 1,
-    ],
-    "experiment_2": [
-        lambda x: x.experiment_type == 2,
-    ],
-    "experiment_3": [
-        lambda x: x.experiment_type == 3,
-    ],
-    "experiment_4": [
-        lambda x: x.experiment_type == 4,
-    ],
-    "experiment_5": [
-        lambda x: x.experiment_type == 5,
-    ],
+    "": [],
+    "experiment_1": [lambda x: x.experiment_type == 1],
+    "experiment_2": [lambda x: x.experiment_type == 2],
+    "experiment_3": [lambda x: x.experiment_type == 3],
+    "experiment_4": [lambda x: x.experiment_type == 4],
+    "experiment_5": [lambda x: x.experiment_type == 5],
     "no_srrm": [lambda x: ~x.line_experiment.str.contains("srrm")],
     "srrm": [lambda x: x.line_experiment.str.contains("srrm")],
+    "srrm3_17": [lambda x: x["line"] == "srrm3_17"],
+    "no_WT": [lambda x: ~x["genotype_group"].str.contains("WT")],
 }
 
 ## BOXPLOT KWARGS

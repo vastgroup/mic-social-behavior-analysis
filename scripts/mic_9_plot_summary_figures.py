@@ -3,7 +3,11 @@ import argparse
 import pandas as pd
 from confapp import conf
 from ipywidgets import interact
-from mic_analysis.datasets import TRAJECTORYTOOLS_DATASETS_INFO, get_datasets, data_filter
+from mic_analysis.datasets import (
+    TRAJECTORYTOOLS_DATASETS_INFO,
+    data_filter,
+    get_datasets,
+)
 from mic_analysis.logger import setup_logs
 from mic_analysis.plotters import plot_summary_all_partitions
 from mic_analysis.variables import get_variables_ranges
@@ -27,19 +31,35 @@ parser.add_argument(
     type=str,
     default="line_experiment",
     choices=["line_experiment", "line_replicate_experiment"],
-    help="Replots figures previously plotted",
+    help="Partition column to select data to plot each figure",
+)
+parser.add_argument(
+    "-fs",
+    "--folder_suffix",
+    type=str,
+    default="",
+    help="A suffix to be added to the name of the folder where "
+    "figures are stored",
+)
+parser.add_argument(
+    "-df", 
+    "--data_filters",
+    type=str,
+    default="",
+    choices=conf.DATA_FILTERS.keys(),
+    nargs='+',
 )
 args = parser.parse_args()
 
-data_filters = [
-    lambda x: x["experiment_type"] == 1,
-    lambda x: x["line"] == "srrm3_17",
-    lambda x: ~x['genotype_group'].str.contains('WT')
-]
+# TODO: add filters as external variables
+filters_to_apply = []
+for filter_name in args.data_filters:
+    filters_to_apply.extend(conf.DATA_FILTERS[filter_name])
+    
 videos_table = pd.read_csv(conf.VIDEOS_INDEX_FILE_NAME)
 variables_ranges = get_variables_ranges(TRAJECTORYTOOLS_DATASETS_INFO)
 
-videos_table = data_filter(videos_table, data_filters)
+videos_table = data_filter(videos_table, filters_to_apply)
 
 plot_summary_all_partitions(
     TRAJECTORYTOOLS_DATASETS_INFO,
@@ -47,4 +67,5 @@ plot_summary_all_partitions(
     variables_ranges,
     partition_col=args.partition_col,
     replot=args.replot,
+    folder_suffix=args.folder_suffix
 )

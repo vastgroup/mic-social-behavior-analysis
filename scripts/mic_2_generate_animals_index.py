@@ -17,7 +17,7 @@ from mic_analysis.utils import get_files_with_pattern, read_csv
 logger = setup_logs("animals_index")
 
 # Read all files in the directory.
-# Files with a pattern different than 20*.xlsx won't be read
+# Files with a pattern different than 20*. won't be read
 experiment_table_paths = get_files_with_pattern(
     os.path.join(conf.EXPERIMENTS_DATA_FOLDER_PATH, "20*.csv")
 )

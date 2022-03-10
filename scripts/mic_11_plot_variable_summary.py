@@ -26,11 +26,14 @@ if __name__ == "__main__":
             os.path.join(dataset_info["dir_path"], "per_animal_stats.pkl")
         )
 
+    # TODO: externalize filters with in argparse
     filters = [
         lambda x: x.experiment_type == 1,
         lambda x: ~x.line_experiment.str.contains("srrm"),
     ]
+    # TODO: externalize partition_col in argparse
     partition = "line"
+
     whis = 1.5
 
     save_folder = os.path.join(

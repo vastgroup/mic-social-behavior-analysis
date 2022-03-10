@@ -49,3 +49,5 @@ for extension in [".png", ".pdf"]:
     plt.savefig(
         os.path.join(conf.GENERATED_FIGURES_PATH, f"correlation{extension}")
     )
+
+# TODO: Check if old figures are worth to keep plotting them

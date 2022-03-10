@@ -9,6 +9,8 @@ from mic_analysis.stats import (
     standardize_replicate_data_wrt_het,
 )
 
+# TODO: generate .csv of per_animal_stats.pkl file
+
 logger = setup_logs("get_per_animal_stats")
 
 videos_table = pd.read_csv(conf.VIDEOS_INDEX_FILE_NAME)
