@@ -87,6 +87,7 @@ def circstd(x):
 
 
 def ratio_in_front(x, angle=90):
+    # TODO: Add filter for speed and interindividual distance
     angle_rad = angle / 180 * np.pi
     front_angle = angle_rad
     front = (x.abs() <= front_angle).sum()

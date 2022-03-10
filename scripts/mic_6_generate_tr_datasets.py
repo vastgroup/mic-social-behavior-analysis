@@ -35,6 +35,7 @@ videos_table.set_index("trial_uid", drop=True, inplace=True)
 
 animals_table = pd.read_csv(conf.ANIMALS_INDEX_FILE_PATH)
 
+# TODO: Save trajectorytools data as .csv (not sure enough memory to store it)
 for name, tt_dataset_info in TRAJECTORYTOOLS_DATASETS_INFO.items():
     index_path = os.path.join(tt_dataset_info["dir_path"], "index.pkl")
     new_tr_vars_index = generate_variables_dataset(

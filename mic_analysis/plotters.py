@@ -986,6 +986,19 @@ def _plot_video_indiv_nb_variables_summary(data, variables, variables_ranges):
         )
     return fig
 
+# def __plot_partition_vars_summary(
+#     data,
+#     data_stats,
+#     variables,
+#     variables_ranges,
+#     variables_stats,
+#     boxplot_kwargs, 
+#     stats_kwargs,
+     
+#     pairs_of_groups_for_stats=conf.PAIRSPAIRS_OF_GROUPS
+#     hue=None
+#     ):
+
 
 def _plot_partition_indiv_vars_summary(
     data,
@@ -1055,12 +1068,12 @@ def _plot_partition_indiv_vars_summary(
         _update_order(data, boxplot_kwargs, conf.GENOTYPE_GROUP_GENOTYPE_ORDER)
         variable_stats = [
             variable,
-            (f"{variable[0]}_diff", variable[1]),
             (f"{variable[0]}_standardized", variable[1]),
         ]
         axs = [ax_boxplot, ax_boxplot_diff, ax_boxplot_standardized]
         for variable_stat, ax in zip(variable_stats, axs):
             # TODO: Here loop for mean/median stats and whis=100 vs 1.5
+            # TODO: Compute stats for median and stats
             var_test_stats, outliers_, _ = _boxplots_one_variable_with_stats(
                 ax,
                 data_stats,
@@ -1146,7 +1159,6 @@ def _plot_partition_group_vars_summary(
         _update_order(data, boxplot_kwargs, conf.GENOTYPE_GROUP_ORDER)
         variable_stats = [
             variable,
-            (f"{variable[0]}_diff", variable[1]),
             (f"{variable[0]}_standardized", variable[1]),
         ]
         axs = [ax_boxplot, ax_boxplot_diff, ax_boxplot_standardized]
@@ -1236,7 +1248,6 @@ def _plot_partition_indiv_nb_summary(
         _update_order(data, boxplot_kwargs, conf.FOCAL_NB_GENOTYPE_ORDER)
         variable_stats = [
             variable,
-            (f"{variable[0]}_diff", variable[1]),
             (f"{variable[0]}_standardized", variable[1]),
         ]
         axs = [ax_boxplot, ax_boxplot_diff, ax_boxplot_standardized]
@@ -1342,12 +1353,13 @@ def plot_summary_video(
             fig.savefig(fig_save_path_pdf)
             plt.close()
 
-    
-    for animal_uid in datasets_partition["data_indiv_nb"][
-        animal_col
-    ].unique():
-        fig_save_path_png = os.path.join(save_path, f"{animal_uid}_indiv_nb.png")
-        fig_save_path_pdf = os.path.join(save_path, f"{animal_uid}_indiv_nb.pdf")
+    for animal_uid in datasets_partition["data_indiv_nb"][animal_col].unique():
+        fig_save_path_png = os.path.join(
+            save_path, f"{animal_uid}_indiv_nb.png"
+        )
+        fig_save_path_pdf = os.path.join(
+            save_path, f"{animal_uid}_indiv_nb.pdf"
+        )
         files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
             fig_save_path_pdf
         )
@@ -1370,6 +1382,7 @@ def plot_summary_video(
 
 def plot_summary_partition(
     datasets_info,
+    videos_table,
     partition_col,
     partition_uid,
     variables_ranges,
@@ -1381,9 +1394,13 @@ def plot_summary_partition(
     save_path=".",
     replot=False,
 ):
+
+    trials_uids = videos_table[
+        videos_table[partition_col] == partition_uid
+    ].trial_uid.unique()
     logger.info(f"*********   Plotting {partition_uid} summary   ******")
     datasets_partition, no_data = get_partition_datasets(
-        datasets_info, partition_col, partition_uid
+        datasets_info, trials_uids
     )
     if not no_data:
         save_path = os.path.join(save_path, partition_uid)
@@ -1494,6 +1511,7 @@ def plot_summary_partition(
         return None, None
 
 
+# TODO: pass list of outliers to ignore and replot in a new folder
 def plot_summary_all_partitions(
     datasets_info, videos_table, variables_ranges, partition_col, replot
 ):
@@ -1509,6 +1527,7 @@ def plot_summary_all_partitions(
     Parallel(n_jobs=conf.NUM_JOBS_PARALLELIZATION)(
         delayed(plot_summary_partition)(
             datasets_info,
+            videos_table,
             partition_col,
             partition,
             variables_ranges,
@@ -1612,10 +1631,10 @@ def plot_tracked_videos_summary(videos_table):
     max_num_frames = int(videos_table.number_of_frames.max())
 
     fig, axs = plt.subplots(
-        n_trajectories, 1, figsize=(30, 0.2 * n_trajectories)
+        n_trajectories, 1, figsize=(50, 0.2 * n_trajectories)
     )
     plt.subplots_adjust(
-        left=0.01, bottom=0.01, right=0.7, top=0.99, wspace=0.01, hspace=0.01
+        left=0.01, bottom=0.01, right=0.6, top=0.99, wspace=0.01, hspace=0.01
     )
 
     for idx, video_info in tqdm(
@@ -1680,47 +1699,45 @@ def filter_datasets(datasets, filters):
     return filtered_datasets
 
 
-def plot_partition_outliers(
+def plot_partition_videos_summaries(
     datasets,
     variables_ranges,
+    videos_table,
     partition,
     partition_col,
-    video_column,
-    animal_column,
     path_to_summary_folder,
-    replot,
+    video_column="trial_uid",
+    animal_column="trial_uid_id",
+    replot=False,
 ):
-    logger.info(f"Plotting outlier for partition {partition}")
+    partition_videos = videos_table[videos_table[partition_col] == partition]
+    logger.info(f"Plotting video summaries for partition {partition}")
     datasets, no_data = get_partition_datasets(
-        TRAJECTORYTOOLS_DATASETS_INFO, partition_col, partition
+        TRAJECTORYTOOLS_DATASETS_INFO, partition_videos[video_column].values
     )
+    partition_folder = os.path.join(path_to_summary_folder, partition)
     if not no_data:
         logger.info(f"Plotting outliers for {partition}")
-        partition_folder = os.path.join(path_to_summary_folder, partition)
-        outliers_path = os.path.join(partition_folder, "all_outliers.csv")
-        if os.path.isfile(outliers_path):
-            outliers = pd.read_csv(outliers_path)
-            outliers_uids = list(natsorted(outliers[video_column].unique()))
-            if np.nan in outliers_uids:
-                outliers_uids.remove(np.nan)
-            for outlier_uid in outliers_uids:
-                logger.info(f"Plotting outlier {outlier_uid}")
-                save_path = os.path.join(
-                    partition_folder, "outliers_summaries"
-                )
-                outlier_datasets = filter_datasets(
-                    datasets, [lambda x: x["trial_uid"] == outlier_uid]
-                )
-                if not os.path.isdir(save_path):
-                    os.makedirs(save_path)
-                plot_summary_video(
-                    outlier_datasets,
-                    outlier_uid,
-                    animal_column,
-                    variables_ranges,
-                    save=True,
-                    save_path=save_path,
-                    replot=replot,
-                )
+        save_path = os.path.join(partition_folder, "per_video_summaries")
+        for trial_uid in partition_videos.trial_uid:
+
+            video_datasets = filter_datasets(
+                datasets, [lambda x: x[video_column] == trial_uid]
+            )
+            if not os.path.isdir(save_path):
+                os.makedirs(save_path)
+            plot_summary_video(
+                video_datasets,
+                trial_uid,
+                animal_column,
+                variables_ranges,
+                save=True,
+                save_path=save_path,
+                replot=replot,
+            )
     else:
         logger.info(f"Partition {partition} has no data")
+
+
+# TODO: Plot variables by data and replicate
+# TODO: Plot variables by hour mixing pooling data of all HETs

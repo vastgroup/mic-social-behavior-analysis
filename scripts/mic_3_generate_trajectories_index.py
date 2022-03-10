@@ -3,9 +3,8 @@ import os
 
 import numpy as np
 import pandas as pd
-from confapp import conf
-
 import trajectorytools as tt
+from confapp import conf
 from mic_analysis.logger import setup_logs
 from mic_analysis.table_generators_utils import (
     get_info_from_params_json,
@@ -19,18 +18,30 @@ logger = setup_logs("trajectories_index")
 
 trajectories_info = []
 for root, dirs, files in os.walk(conf.TRACKING_DATA_FOLDER_PATH):
+
     if "trajectories_wo_gaps.npy" in files:
         trajectory_path = os.path.join(root, "trajectories_wo_gaps.npy")
         logger.info(f"Getting info for trajectories in {root}")
         trajectory_path_relative = os.path.relpath(
             trajectory_path, conf.TRACKING_DATA_FOLDER_PATH
         )
+        (
+            gene,
+            founder,
+            replicate,
+            experiment_type,
+        ) = trajectory_path_relative.split("/")[0].split("_")
         trajectory_info = {
             "trajectory_path": trajectory_path_relative,
             "folder_name_track": os.path.split(
                 os.path.split(trajectory_path_relative)[0]
             )[0],
+            "gene": gene,
+            "founder": founder,
+            "replicate": replicate,
+            "experiment_type": experiment_type,
         }
+
         trajectory_dict = np.load(trajectory_path, allow_pickle=True).item()
         trajectory_info.update(get_info_from_trajectory_dict(trajectory_dict))
         trajectory_info.update(
@@ -100,7 +111,6 @@ for root, dirs, files in os.walk(conf.TRACKING_DATA_FOLDER_PATH):
                     video_object_path, allow_pickle=True
                 ).item()
                 trajectory_info["estimated_accuracy"] = video_object.overall_P2
-
         trajectories_info.append(trajectory_info)
 trajectories_table = pd.DataFrame(trajectories_info)
 trajectories_table.to_csv(conf.TRAJECTORIES_INDEX_FILE_NAME, index=False)

@@ -106,8 +106,8 @@ def get_data(path, data_filters, agg_stats_kwargs):
     return data, data_stats
 
 
-def get_partition_datasets(datasets_info, partition_col, partition):
-    video_filters = [lambda x: x[partition_col] == partition]
+def get_partition_datasets(datasets_info, trial_uids):
+    video_filters = [lambda x: x["trial_uid"].isin(trial_uids)]
     datasets = {}
     no_data = False
     for name, dataset_info in datasets_info.items():
@@ -295,13 +295,14 @@ def generate_variables_dataset(
             if tr_row.tracked and tr_row.valid_for_analysis:
                 logger.info(f"Generating dataframe")
                 animals = animals_table[animals_table.trial_uid == trial_uid]
+                # TODO: Consider background subtraction for BL computation from idtracker.ai
                 mean_size_cm = _get_mean_size_cm(
                     tr_row, animals, animals_table
                 )
                 length_unit, length_unit_name = _get_length_unit(
                     scale_to_body_length, mean_size_cm
                 )
-
+                # TODO: Save metadata trajectories preprocessing next to data
                 tr = _get_trajectories(
                     tr_row.abs_trajectory_path,
                     center=tr_row.roi_center,

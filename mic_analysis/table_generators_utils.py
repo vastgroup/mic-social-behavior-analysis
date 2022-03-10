@@ -205,8 +205,8 @@ def _info_from_video_path(
         "video_path": video_path,
         "trial": int(trial[5:]),
         "date": date,
-        "gene": gene,
-        "founder": founder,
+        # "gene": gene,
+        # "founder": founder,
         "age": age,
         "hour": hour,
     }
@@ -468,7 +468,7 @@ def _add_video_quality_state_columns(videos_table):
     )
     videos_table["valid_num_impossible_speed_jumps"] = (
         videos_table["num_impossible_speed_jumps"]
-        < conf.THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS
+        <= conf.THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS
     )
     videos_table["valid_num_unsolvable_impossible_speed_jumps"] = (
         videos_table["num_unsolvable_impossible_jumps"] == 0
@@ -515,17 +515,20 @@ def generate_videos_table(
     # We create a table that has info about each experiment with genotyping
     # and trajectories data
     videos_table = pd.merge(
-        animals_table[conf.PER_VIDEO_COLUMNS].drop_duplicates(),
+        animals_table[conf.PER_VIDEO_COLUMNS_IN_ANIMAL_TABLE].drop_duplicates(),
         trajectories_table,
-        left_on=["trial_uid", "folder_name_track", "trial", "gene"],
-        right_on=["trial_uid", "folder_name_track", "trial", "gene"],
+        left_on=[
+            "trial_uid",
+            "folder_name_track",
+            "trial",
+        ],
+        right_on=[
+            "trial_uid",
+            "folder_name_track",
+            "trial",
+        ],
         how="left",
     )
-    print(videos_table.columns)
-    videos_table.drop(
-        ["founder_x", "founder_y", "replicate"], axis=1, inplace=True
-    )
-    print(videos_table.columns)
     videos_table["gene"] = videos_table.trial_uid.apply(
         lambda x: x.split("_")[0]
     )
@@ -556,7 +559,6 @@ def generate_videos_table(
 
 
 def get_tracking_state_table(videos_table):
-
     videos_tracking_state = videos_table[
         ["trial_uid", "genotype_group"]
         + [

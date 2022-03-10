@@ -6,7 +6,7 @@ from confapp import conf
 from joblib import Parallel, delayed
 from mic_analysis.datasets import TRAJECTORYTOOLS_DATASETS_INFO
 from mic_analysis.logger import setup_logs
-from mic_analysis.plotters import plot_partition_outliers
+from mic_analysis.plotters import plot_partition_videos_summaries
 from mic_analysis.variables import get_variables_ranges
 from natsort import natsorted
 
@@ -41,14 +41,15 @@ animal_column = "trial_uid_id"
 
 
 Parallel(n_jobs=conf.NUM_JOBS_PARALLELIZATION)(
-    delayed(plot_partition_outliers)(
+    delayed(plot_partition_videos_summaries)(
         TRAJECTORYTOOLS_DATASETS_INFO,
         variables_ranges,
+        videos_table,
         partition,
         partition_col,
+        path_to_summary_folder,
         video_column,
         animal_column,
-        path_to_summary_folder,
         args.replot,
     )
     for partition in possible_partitions

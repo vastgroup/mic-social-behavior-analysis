@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from confapp import conf
 
-from .utils import circmean, circstd, ratio_in_front
 from .variables import (
     _group_varialbes_enhanced_names,
     _individual_nb_variables_enhanced_names,
@@ -198,6 +197,7 @@ def standardize_replicate_data_wrt_het(
     data_line_replicate = data.groupby("line_replicate", as_index=False)
     data_enhanced = []
     for idx, data_replicate in data_line_replicate:
+        # TODO: standardize angles by circmean circstd
         # mean_agg_rule = {
         #     var_: "mean" if not "angle" in var_ else circmean
         #     for var_ in variables

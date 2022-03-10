@@ -2,7 +2,6 @@ import os
 
 import pandas as pd
 from confapp import conf
-
 from mic_analysis.logger import setup_logs
 from mic_analysis.table_generators_utils import (
     generate_videos_table,
@@ -88,3 +87,5 @@ videos_to_retrack.to_csv(
     os.path.join(conf.GENERATED_TABLES_PATH, "videos_to_retrack.csv"),
     index=False,
 )
+
+# TODO: Report of value counts per sanity validity variable for videos 

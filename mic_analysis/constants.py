@@ -185,6 +185,21 @@ PER_VIDEO_COLUMNS = [
     "control_genotype",
     "control_group",
 ]
+PER_VIDEO_COLUMNS_IN_ANIMAL_TABLE = [
+    "trial",
+    "trial_uid",
+    "px_cm",
+    "accuracy",
+    "file_name",
+    "folder_name_track",
+    "genotype_group",
+    "group_size",
+    "old_name_experiment",
+    "social_data_old",
+    "disk_name_video",
+    "control_genotype",
+    "control_group",
+]
 
 TRACKING_STATE_COLUMNS = [
     "tracked",
@@ -204,7 +219,7 @@ FOR_ANALYDID_COLUMNS = TRACKING_STATE_COLUMNS + ID_LAST_FISH_STATE_COLUMNS
 
 NO_ID_LAST_FISH_FILL_VALUE = 0
 
-THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS = 1
+THRESHOLD_NUM_IMPOSSIBLE_SPEED_JUMPS = 0
 THRESHOLD_MEAN_ID_PROBABILITIES = 0.99
 THRESHOLD_ACCURACY = 0.98
 THRESHOLD_RATIO_TRACKED = 0.98
@@ -248,12 +263,16 @@ GROUP_VARIABLES_TO_DISCARD = ["average_local_polarization"]
 
 
 # Stats
+# TODO: Agreggate speed by freezing function
 AGGREGATION_STATS = {
     "default": ["median", "mean", "std"],
     "distance_travelled": ["median", "mean", "max"],
     "nb_angle": [ratio_in_front, circmean, circstd],
     "nb_angle_diff": [ratio_in_front, circmean, circstd],
     "nb_angle_standardized": [ratio_in_front, circmean, circstd],
+    "angular_position": [circmean, circstd],
+    "angular_position_diff": [circmean, circstd],
+    "angular_position_standardized": [circmean, circstd],
 }
 AGGREGATION_COLUMNS = {
     "indiv": [
@@ -373,6 +392,8 @@ INDIVIDUAL_VARIABLES_STATS_TO_PLOT = [
     ("normed_distance_to_origin", "median"),
     ("normed_distance_to_origin", "mean"),
     ("normed_distance_to_origin", "std"),
+    # ("angular_position", "circmean"), # TODO: Plot these ones after standarization 
+    # ("angular_position", "circstd"),
     ("speed", "median"),
     ("speed", "mean"),
     ("speed", "std"),
@@ -400,6 +421,8 @@ GROUP_VARIABLES_STATS_TO_PLOT = [
 
 INDIVIDUAL_NB_VARIABLES_TO_PLOT = ["nb_angle", "nb_distance"]
 INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT = [
+    # ("nb_angle", "circmean"), # TODO: Plot these ones after standarization 
+    # ("nb_angle", "circstd"),
     ("nb_angle", "ratio_in_front"),
     ("nb_distance", "median"),
     ("nb_distance", "mean"),
