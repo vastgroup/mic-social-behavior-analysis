@@ -25,6 +25,14 @@ This repository includes code to:
         pip install -e pandas_split
         pip install -e .
 
+3. Update path to `DATA_DIR` variable:
+
+        conda env config vars set DATA_DIR="path/to/folder/20220314_Analysis_social"
+
+4. Check that the environment variaboes is properly set:
+
+        echo $DATA_DIR
+
 ## Run
 
 ## Visualize figures in the jupyter notebook
