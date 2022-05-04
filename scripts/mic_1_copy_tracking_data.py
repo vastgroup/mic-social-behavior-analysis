@@ -26,6 +26,8 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+# TODO: Check condition if only video.npy exists and not trajectories_wo_gaps.npy. Otherwise Overall_P2 error is raised
+
 videos = []
 for root, dirs, files in os.walk(args.source_dir):
     params_files = [

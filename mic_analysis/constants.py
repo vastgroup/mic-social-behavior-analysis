@@ -24,6 +24,7 @@ DEFAULT_FILE_FORMATTER = "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
 # that can be sync/downlowaded from Dropbox
 DATA_DIR = os.environ["DATA_DIR"]
 # GENERATED TABLES AND FIGURES
+# TODO: create folder generated_tables and generated_figures
 GENERATED_TABLES_PATH = os.path.join(DATA_DIR, "generated_tables")
 GENERATED_FIGURES_PATH = os.path.join(DATA_DIR, "generated_figures")
 # Conversion table from old to new names
@@ -267,7 +268,7 @@ GROUP_VARIABLES_TO_DISCARD = ["average_local_polarization"]
 # Stats
 # TODO: Agreggate speed by freezing function
 AGGREGATION_STATS = {
-    "default": ["median", "mean", "std"], # TODO: remove median and mea
+    "default": ["median", "mean", "std"],  # TODO: remove median and mea
     "distance_travelled": ["median", "mean", "max"],
     "nb_angle": [ratio_in_front, circmean, circstd],
     "nb_angle_diff": [ratio_in_front, circmean, circstd],
@@ -386,7 +387,7 @@ STD_STATS_CONFIG = {
         "method": "approximate",
         "num_rounds": 10000,
         "func": "std",
-        "paired": False, # TODO: Check that when needed uses paired test
+        "paired": False,  # TODO: Check that when needed uses paired test
     },
 }
 
@@ -460,7 +461,7 @@ DATA_FILTERS = {
 INDIV_BOXPLOT_KWARGS = {
     "x": "genotype_group_genotype",
     "palette": COLORS,
-    "whis": 1.5, # TODO: Modify when considering manual outliers in final plots
+    "whis": 1.5,  # TODO: Modify when considering manual outliers in final plots
 }
 GROUP_BOXPLOT_KWARGS = {
     "x": "genotype_group",
