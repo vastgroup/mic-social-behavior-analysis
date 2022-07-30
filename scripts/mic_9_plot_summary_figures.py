@@ -18,13 +18,7 @@ parser = argparse.ArgumentParser(
     description="Generates dataframes using trajectorytools for each video"
     "that that has been tracked and is valid for analysis"
 )
-parser.add_argument(
-    "-rp",
-    "--replot",
-    action="store_true",
-    default=False,
-    help="Replots figures previously plotted",
-)
+
 parser.add_argument(
     "-pc",
     "--partition_col",
@@ -42,12 +36,12 @@ parser.add_argument(
     "figures are stored",
 )
 parser.add_argument(
-    "-df", 
+    "-df",
     "--data_filters",
     type=str,
     default="",
     choices=conf.DATA_FILTERS.keys(),
-    nargs='+',
+    nargs="+",
 )
 args = parser.parse_args()
 
@@ -55,17 +49,24 @@ args = parser.parse_args()
 filters_to_apply = []
 for filter_name in args.data_filters:
     filters_to_apply.extend(conf.DATA_FILTERS[filter_name])
-    
+
 videos_table = pd.read_csv(conf.VIDEOS_INDEX_FILE_NAME)
 variables_ranges = get_variables_ranges(TRAJECTORYTOOLS_DATASETS_INFO)
 
 videos_table = data_filter(videos_table, filters_to_apply)
+
+folder_suffix = args.folder_suffix
+if folder_suffix and not folder_suffix.startswith("_"):
+    folder_suffix = f"_{folder_suffix}"
+
+folder_suffix = (
+    folder_suffix + f"_{conf.TEST_STATS_KWARGS['func']}"
+)
 
 plot_summary_all_partitions(
     TRAJECTORYTOOLS_DATASETS_INFO,
     videos_table,
     variables_ranges,
     partition_col=args.partition_col,
-    replot=args.replot,
-    folder_suffix=args.folder_suffix
+    folder_suffix=folder_suffix,
 )

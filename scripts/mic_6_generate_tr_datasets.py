@@ -15,11 +15,11 @@ parser = argparse.ArgumentParser(
     "that that has been tracked and is valid for analysis"
 )
 parser.add_argument(
-    "-rg",
-    "--regenerate",
+    "-r",
+    "--reuse",
     action="store_true",
     default=False,
-    help="Regenerates previously generated dataframes of a given dataset",
+    help="Reuses previously generated dataframes of a given dataset",
 )
 args = parser.parse_args()
 
@@ -45,5 +45,5 @@ for name, tt_dataset_info in TRAJECTORYTOOLS_DATASETS_INFO.items():
         tt_dataset_info["variables_to_compute"],
         scale_to_body_length=tt_dataset_info["scale_to_body_length"],
         save_dir=tt_dataset_info["dir_path"],
-        regenerate=args.regenerate,
+        regenerate=not args.reuse,
     )

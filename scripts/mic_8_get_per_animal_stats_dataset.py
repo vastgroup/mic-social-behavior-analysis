@@ -9,8 +9,6 @@ from mic_analysis.stats import (
     standardize_replicate_data_wrt_het,
 )
 
-# TODO: generate .csv of per_animal_stats.pkl file
-
 logger = setup_logs("get_per_animal_stats")
 
 videos_table = pd.read_csv(conf.VIDEOS_INDEX_FILE_NAME)
@@ -61,3 +59,4 @@ for name, dataset_info in TRAJECTORYTOOLS_DATASETS_INFO.items():
         dataset_info["dir_path"], conf.PER_ANIMAL_STATS_FILE_NAME
     )
     all_data_stats.to_pickle(save_path)
+    all_data_stats.to_csv(save_path.replace(".pkl", ".csv"))

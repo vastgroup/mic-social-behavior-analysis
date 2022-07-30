@@ -107,6 +107,7 @@ def get_data(path, data_filters, agg_stats_kwargs):
 
 
 def get_partition_datasets(datasets_info, trial_uids):
+    logging.info("Getting partition datasets")
     video_filters = [lambda x: x["trial_uid"].isin(trial_uids)]
     datasets = {}
     no_data = False

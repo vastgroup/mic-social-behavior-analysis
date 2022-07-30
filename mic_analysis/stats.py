@@ -1,8 +1,18 @@
 import logging
+from typing import List
 
 import numpy as np
 import pandas as pd
 from confapp import conf
+
+from mic_analysis.utils import (
+    circmean_degrees,
+    circstd_degrees,
+    ratio_in_back,
+    ratio_in_front,
+    frames_in_periphery,
+    frames_moving
+)
 
 from .variables import (
     _group_varialbes_enhanced_names,
@@ -13,12 +23,29 @@ from .variables import (
 
 logger = logging.getLogger(__name__)
 
+stats_conversion_dict = {
+    "mean": np.mean,
+    "median": np.median,
+    "std": np.std,
+    "frames_moving": frames_moving,
+    "frames_in_periphery": frames_in_periphery,
+    "circmean_degrees": circmean_degrees,
+    "circstd_degrees": circstd_degrees,
+    "ratio_in_front": ratio_in_front,
+    "ratio_in_back": ratio_in_back,
+    "max": np.max
+}
+
+
+def _get_function_aggregator_list(aggregators_str: List[str]):
+    return [stats_conversion_dict[agg] for agg in aggregators_str]
+
 
 def _get_agg_rule_dictionary(variables_names):
     return {
-        var_: conf.AGGREGATION_STATS["default"]
+        var_: _get_function_aggregator_list(conf.AGGREGATION_STATS["default"])
         if not var_ in conf.AGGREGATION_STATS.keys()
-        else conf.AGGREGATION_STATS[var_]
+        else _get_function_aggregator_list(conf.AGGREGATION_STATS[var_])
         for var_ in variables_names
     }
 
@@ -137,6 +164,9 @@ def _compute_groups_stats(
             elif test_kwargs_updated["func"] == "mean":
                 func = lambda x, y: np.abs(np.mean(x) - np.mean(y))
                 stat_func = np.mean
+            elif test_kwargs_updated["func"] == "std":
+                func = lambda x, y: np.abs(np.std(x) - np.std(y))
+                stat_func = np.std
             test_kwargs_updated["func"] = func
 
             p_value = test_func(
@@ -197,29 +227,48 @@ def standardize_replicate_data_wrt_het(
     data_line_replicate = data.groupby("line_replicate", as_index=False)
     data_enhanced = []
     for idx, data_replicate in data_line_replicate:
-        # TODO: standardize angles by circmean circstd
-        # mean_agg_rule = {
-        #     var_: "mean" if not "angle" in var_ else circmean
-        #     for var_ in variables
-        # }
-        # std_agg_rule = {
-        #     var_: "mean" if not "angle" in var_ else circstd
-        #     for var_ in variables
-        # }
+        linear_variables = [var_ for var_ in variables if "ang" not in var_]
+        angular_variables = [var_ for var_ in variables if "ang" in var_]
+
+        logging.info(f"angular_variables are {angular_variables}")
         means = data_replicate[
             (data.genotype_group == normalizing_genotype_group)
-        ][variables].mean()
+        ][linear_variables].mean()
+
         stds = data_replicate[
             (data.genotype_group == normalizing_genotype_group)
-        ][variables].std()
+        ][linear_variables].std()
 
-        diff_variables = [f"{variable}_diff" for variable in variables]
-        data_replicate[diff_variables] = data_replicate[variables] - means
-
-        diff_variables = [f"{variable}_standardized" for variable in variables]
+        diff_variables = [f"{variable}_diff" for variable in linear_variables]
         data_replicate[diff_variables] = (
-            data_replicate[variables] - means
-        ) / stds
+            data_replicate[linear_variables] - means[linear_variables]
+        )
+
+        standardized_variables = [
+            f"{variable}_standardized" for variable in linear_variables
+        ]
+        data_replicate[standardized_variables] = (
+            data_replicate[linear_variables] - means
+        ) / stds[linear_variables]
+
+        # TODO: not sure how to do standarization for angular variables
+        # We do this trick so that later we can plot the angular variable
+        # Note that the values and scale of the diff and standardized will
+        # be the same that the actual variable.
+        if angular_variables:
+            diff_angular_variables = [
+                f"{variable}_diff" for variable in angular_variables
+            ]
+            data_replicate[diff_angular_variables] = data_replicate[
+                angular_variables
+            ]
+
+            standardized_angular_variables = [
+                f"{variable}_standardized" for variable in angular_variables
+            ]
+            data_replicate[standardized_angular_variables] = data_replicate[
+                angular_variables
+            ]
 
         data_enhanced.append(data_replicate)
     data_enhanced = pd.concat(data_enhanced)

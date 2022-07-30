@@ -7,6 +7,8 @@ import pandas as pd
 import scipy.stats as ss
 import trajectorytools as tt
 
+from .constants import THRESHOLD_MOVING, THRESHOLD_PERIPHERY
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,20 +84,39 @@ def circmean(x):
     return ss.circmean(x, high=np.pi, low=-np.pi)
 
 
+def circmean_degrees(x):
+    return ss.circmean(x, high=180, low=-180)
+
+
 def circstd(x):
     return ss.circstd(x, high=np.pi, low=-np.pi)
 
 
+def circstd_degrees(x):
+    return ss.circstd(x, high=180, low=-180)
+
+
 def ratio_in_front(x, angle=90):
     # TODO: Add filter for speed and interindividual distance
-    angle_rad = angle / 180 * np.pi
-    front_angle = angle_rad
-    front = (x.abs() <= front_angle).sum()
+    front = (x.abs() <= angle).sum()
     return front / len(x)
 
 
 def ratio_in_back(x, angle=90):
-    angle_rad = angle / 180 * np.pi
-    back_angle = np.pi - angle_rad
-    back = (x.abs() >= back_angle).sum()
+    back = (x.abs() >= angle).sum()
     return back / len(x)
+
+
+def frames_moving(x, threshold_moving=THRESHOLD_MOVING):
+    num_frames_moving = np.sum(x > threshold_moving)
+    return num_frames_moving
+
+
+def frames_in_periphery(x):
+    """x is typically the "normed_distance_to_origin", so the threshold is a
+    ratio of the radius of the arena. This is, if the threshold time_in_periphery is
+    0.8 this function computes the time spend at a distance of
+    0.8*radius_of_arena from the center.
+    """
+    num_frames_in_perifery = np.sum(x > THRESHOLD_PERIPHERY)
+    return num_frames_in_perifery

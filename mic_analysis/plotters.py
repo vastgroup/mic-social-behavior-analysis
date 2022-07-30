@@ -29,8 +29,14 @@ from .variables import all_variables_names_enhanced
 
 logger = logging.getLogger(__name__)
 
+# So that text in PDF can be editted
 mpl.rcParams["pdf.fonttype"] = 42
+# General font size
 mpl.rcParams["font.size"] = "14"
+# trigger core fonts for PDF backend
+mpl.rcParams["pdf.use14corefonts"] = True
+# trigger core fonts for PS backend
+mpl.rcParams["ps.useafm"] = True
 
 
 def _add_num_data_points(
@@ -72,7 +78,9 @@ def _get_x_group(group, order):
     return x
 
 
-def _plot_var_stat(ax, var_stat, y_line_stat, order, y_offset, y_lim):
+def _plot_var_stat(
+    ax, var_stat, y_line_stat, order, y_offset, y_lim, comparison_stat
+):
     x_group_a = _get_x_group(
         var_stat["group_a"],
         order,
@@ -93,8 +101,9 @@ def _plot_var_stat(ax, var_stat, y_line_stat, order, y_offset, y_lim):
         alpha=alpha,
     )
     y_min, y_max = y_lim
-    ax.plot([x_group_a], [var_stat["stat_a"]], "ok")
-    ax.plot([x_group_b], [var_stat["stat_b"]], "ok")
+    if comparison_stat in ["mean", "median"]:
+        ax.plot([x_group_a], [var_stat["stat_a"]], "ok")
+        ax.plot([x_group_b], [var_stat["stat_b"]], "ok")
     if y_line_stat + y_offset > y_max:
         ax.set_ylim([y_min, y_line_stat + y_offset])
 
@@ -107,6 +116,7 @@ def _plot_var_stats(
     order,
     y_lim=None,
     y_offset=None,
+    comparison_stat=None,
 ):
     if y_lim is None:
         y_lim = ax.get_ylim()
@@ -127,6 +137,7 @@ def _plot_var_stats(
             order,
             y_offset,
             y_lim,
+            comparison_stat,
         )
         y_lim = ax.get_ylim()
 
@@ -236,6 +247,7 @@ def _boxplots_one_variable_with_stats(
             boxplot_kwargs["order"],
             y_lim=ax.get_ylim(),
             y_offset=variable_y_offset,
+            comparison_stat=stats_kwargs["test_func_kwargs"]["func"],
         )
     else:
         var_test_stats = None
@@ -536,6 +548,12 @@ def _plot_variable_along_time(
 def _plot_variable_1d_dist(
     data, variable, variables_ranges, ax=None, hue=None, legend=None, how="h"
 ):
+    # import pdb
+    # pdb.set_trace()
+    assert variable in variables_ranges.variable.values, (
+        variable,
+        variables_ranges,
+    )
     bin_range = (
         variables_ranges[variables_ranges.variable == variable]["min"].values[
             0
@@ -544,6 +562,7 @@ def _plot_variable_1d_dist(
             0
         ],
     )
+
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(30, 10))
     assert variable in data
@@ -640,7 +659,7 @@ def _plot_polar_dist_relative_positions(data, axs):
         data_focal = data[data.trial_uid_id == trial_uid_id]
         pos_hist, r_edges, theta_edges = polar_histogram(
             data_focal.nb_distance.values,
-            data_focal.nb_angle.values,
+            data_focal.nb_angle_degrees.values * np.pi / 180,
             density=True,
             range_r=4,
             bins=(10, 12),
@@ -661,8 +680,11 @@ def _plot_polar_dist_relative_positions(data, axs):
         vmin = np.min([vmin, np.min(mean_pos_hist)])
         vmax = np.max([vmax, np.max(mean_pos_hist)])
 
-    for i, (focal_nb_genotype, pos_hist) in enumerate(pos_hists_arrs.items()):
-        ax = axs[i]
+    for i, (ax, (focal_nb_genotype, pos_hist)) in enumerate(
+        zip(axs, pos_hists_arrs.items())
+    ):
+        print(focal_nb_genotype)
+        print(len(axs), len(pos_hists_arrs))
         mean_pos_hist = np.mean(pos_hist, axis=0)
         plot_polar_histogram(
             mean_pos_hist,
@@ -836,6 +858,8 @@ def __plot_partition_vars_summary(
     logger.info("Plotting boxplots")
     outliers = []
     test_stats = []
+    # import pdb
+    # pdb.set_trace()
     for i, (variable, ax_boxplot, ax_boxplot_standardized,) in enumerate(
         zip(
             variables_stats,
@@ -868,19 +892,34 @@ def __plot_partition_vars_summary(
         for variable_stat, ax in zip(variable_stats, axs):
             # TODO: Here loop for mean/median stats and whis=100 vs 1.5
             # TODO: Compute stats for median and stats
-            var_test_stats, outliers_, _ = _boxplots_one_variable_with_stats(
-                ax,
-                data_stats,
-                variable_stat,
-                num_data_points,
-                boxplot_kwargs,
-                stats_kwargs,
-                pairs_of_groups_for_stats,
-                variable_ylim=None,
-                variable_y_offset=variables_y_offsets[variable_stat],
-            )
-            outliers.extend(outliers_)
-            test_stats.extend(var_test_stats)
+            # import pdb
+            # pdb.set_trace()
+            try:
+                (
+                    var_test_stats,
+                    outliers_,
+                    _,
+                ) = _boxplots_one_variable_with_stats(
+                    ax,
+                    data_stats,
+                    variable_stat,
+                    num_data_points,
+                    boxplot_kwargs,
+                    stats_kwargs,
+                    pairs_of_groups_for_stats,
+                    variable_ylim=None,
+                    variable_y_offset=variables_y_offsets[variable_stat],
+                )
+                outliers.extend(outliers_)
+                test_stats.extend(var_test_stats)
+            except KeyError:
+                # Variables aggregators "frames_moving" and
+                # "frames_from_periphery" are computed from the raw variables
+                # without standardization because thresholds (speed and
+                # distance) are set on the raw variable.
+                # In this cases the plot fails with a KeyError
+                logging.warning(f"Cannot plot for variable {variable_stat}")
+                ax.set_visible(False)
     outliers = pd.concat(outliers)
     outliers.drop_duplicates(inplace=True)
     test_stats = pd.DataFrame(test_stats)
@@ -898,6 +937,8 @@ def _plot_partition_indiv_vars_summary(
     pairs_of_groups_for_stats=conf.PAIRS_OF_GROUPS,
     hue=None,
 ):
+    # import pdb
+    # pdb.set_trace()
     return __plot_partition_vars_summary(
         "indiv",
         data,
@@ -996,7 +1037,7 @@ def plot_summary_video(
     variables_ranges,
     save=False,
     save_path=".",
-    replot=False,
+    reuse_plots=False,
 ):
 
     video_info_str = get_video_info_str(datasets_partition["data_indiv"])
@@ -1006,7 +1047,7 @@ def plot_summary_video(
     files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
         fig_save_path_pdf
     )
-    if not files_exists or replot:
+    if not files_exists or not reuse_plots:
         fig = _plot_video_indiv_vars_summary(
             datasets_partition["data_indiv"],
             conf.INDIVIDUAL_VARIABLES_TO_PLOT,
@@ -1024,7 +1065,7 @@ def plot_summary_video(
     files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
         fig_save_path_pdf
     )
-    if not files_exists or replot:
+    if not files_exists or not reuse_plots:
         fig = _plot_group_variables_summary(
             datasets_partition["data_group"],
             conf.GROUP_VARIABLES_TO_PLOT,
@@ -1046,7 +1087,7 @@ def plot_summary_video(
         files_exists = os.path.isfile(fig_save_path_png) and os.path.isfile(
             fig_save_path_pdf
         )
-        if not files_exists or replot:
+        if not files_exists or reuse_plots:
             animal_nb_data = datasets_partition["data_indiv_nb"][
                 datasets_partition["data_indiv_nb"][animal_col] == animal_uid
             ]
@@ -1103,8 +1144,8 @@ def _plot_vars_summary_partition(
         fig_save_path_png = os.path.join(save_path, f"{vars_type}_vars.png")
         fig_save_path_pdf = os.path.join(save_path, f"{vars_type}_vars.pdf")
         logger.info("Saving figures outliers and stats")
-        fig.savefig(fig_save_path_png)
-        fig.savefig(fig_save_path_pdf)
+        fig.savefig(fig_save_path_png, format="png")
+        fig.savefig(fig_save_path_pdf, format="pdf")
         outliers.to_csv(
             os.path.join(save_path, f"{vars_type}_outliers.csv"), index=False
         )
@@ -1123,12 +1164,15 @@ def plot_summary_partition(
     indiv_boxplot_kwargs=conf.INDIV_BOXPLOT_KWARGS,
     group_boxplot_kwargs=conf.GROUP_BOXPLOT_KWARGS,
     indiv_nb_boxplot_kwargs=conf.INDIV_NB_BOXPLOT_KWARGS,
-    stats_kwargs=conf.MEAN_STATS_CONFIG,
+    test_stats_func=conf.TEST_STATS_FUNC,
+    test_stats_kwargs=conf.TEST_STATS_KWARGS,
     save=False,
     save_path=".",
-    replot=False,  # TODO: Fix replot
 ):
-
+    stats_kwargs = {
+        "test_func": test_stats_func,
+        "test_func_kwargs": test_stats_kwargs,
+    }
     trials_uids = videos_table[
         videos_table[partition_col] == partition_uid
     ].trial_uid.unique()
@@ -1166,7 +1210,7 @@ def plot_summary_partition(
         all_test_stats = []
 
         for vars_type, plot_info in vars_summary_plot_info.items():
-
+            logger.info(f"vars_type {vars_type}")
             outliers, test_stats = _plot_vars_summary_partition(
                 vars_type,
                 datasets_partition,
@@ -1206,12 +1250,13 @@ def plot_summary_all_partitions(
     videos_table,
     variables_ranges,
     partition_col,
-    replot,
     folder_suffix,
 ):
 
     possible_partition_uids = natsorted(videos_table[partition_col].unique())
 
+    if folder_suffix and not folder_suffix.startswith("_"):
+        folder_suffix = f"_{folder_suffix}"
     save_path = os.path.join(
         conf.GENERATED_FIGURES_PATH, f"summary_{partition_col}{folder_suffix}"
     )
@@ -1227,7 +1272,6 @@ def plot_summary_all_partitions(
             variables_ranges,
             save=True,
             save_path=save_path,
-            replot=replot,
         )
         for partition in possible_partition_uids
     )
@@ -1402,7 +1446,7 @@ def plot_partition_videos_summaries(
     path_to_summary_folder,
     video_column="trial_uid",
     animal_column="trial_uid_id",
-    replot=False,
+    reuse_plots=False,
 ):
     partition_videos = videos_table[videos_table[partition_col] == partition]
     logger.info(f"Plotting video summaries for partition {partition}")
@@ -1412,7 +1456,7 @@ def plot_partition_videos_summaries(
     partition_folder = os.path.join(path_to_summary_folder, partition)
     if not no_data:
         logger.info(f"Plotting outliers for {partition}")
-        save_path = os.path.join(partition_folder, "per_video_summaries")
+        save_path = partition_folder
         for trial_uid in partition_videos.trial_uid:
 
             video_datasets = filter_datasets(
@@ -1427,7 +1471,7 @@ def plot_partition_videos_summaries(
                 variables_ranges,
                 save=True,
                 save_path=save_path,
-                replot=replot,
+                reuse_plots=reuse_plots,
             )
     else:
         logger.info(f"Partition {partition} has no data")

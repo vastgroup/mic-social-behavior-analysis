@@ -3,8 +3,6 @@ import os
 import numpy as np
 from mlxtend.evaluate import permutation_test
 
-from mic_analysis.utils import circmean, circstd, ratio_in_front
-
 # TODO: Mark variables that can be modified in local settings
 
 NUM_JOBS_PARALLELIZATION = 6
@@ -260,22 +258,53 @@ COLORS = {
 INDIVIDUAL_VARIALBES_TO_DISCARD = [
     "local_polarization",
     "distance_to_center_of_group",
+    "angular_position",  # we will use angular_position_degrees
 ]
-INDIVIDUAL_NB_VARIALBES_TO_DISCARD = ["nb_cos_angle"]
+INDIVIDUAL_NB_VARIALBES_TO_DISCARD = [
+    "nb_cos_angle",
+    "nb_angle",
+]  # we will use nb_angle_degrees
 GROUP_VARIABLES_TO_DISCARD = ["average_local_polarization"]
 
 
 # Stats
-# TODO: Agreggate speed by freezing function
+THRESHOLD_MOVING = 0.5  # BL/s
+THRESHOLD_PERIPHERY = 0.8  # proportion of the radius of the arena
+
+
 AGGREGATION_STATS = {
-    "default": ["median", "mean", "std"],  # TODO: remove median and mea
-    "distance_travelled": ["median", "mean", "max"],
-    "nb_angle": [ratio_in_front, circmean, circstd],
-    "nb_angle_diff": [ratio_in_front, circmean, circstd],
-    "nb_angle_standardized": [ratio_in_front, circmean, circstd],
-    "angular_position": [circmean, circstd],
-    "angular_position_diff": [circmean, circstd],
-    "angular_position_standardized": [circmean, circstd],
+    "default": ["median", "mean", "std"],
+    "speed": ["median", "mean", "std", "frames_moving"],
+    "normed_distance_to_origin": [
+        "median",
+        "mean",
+        "std",
+        "frames_in_periphery",
+    ],
+    "distance_travelled": ["max"],
+    "distance_travelled_standardized": ["max"],
+    "distance_travelled_diff": ["max"],
+    "nb_angle_degrees": [
+        "ratio_in_front",
+        "circmean_degrees",
+        "circstd_degrees",
+    ],
+    "nb_angle_degrees_diff": [
+        "ratio_in_front",
+        "circmean_degrees",
+        "circstd_degrees",
+    ],
+    "nb_angle_degrees_standardized": [
+        "ratio_in_front",
+        "circmean_degrees",
+        "circstd_degrees",
+    ],
+    "angular_position_degrees": ["circmean_degrees", "circstd_degrees"],
+    "angular_position_degrees_diff": ["circmean_degrees", "circstd_degrees"],
+    "angular_position_degrees_standardized": [
+        "circmean_degrees",
+        "circstd_degrees",
+    ],
 }
 AGGREGATION_COLUMNS = {
     "indiv": [
@@ -363,53 +392,40 @@ PAIRS_OF_GROUPS = (
     + TEST_PAIRS_GROUPS["group"]
 )
 # This are arguments to the permutation_test function in the mlxtend python library
-MEAN_STATS_CONFIG = {
-    "test_func": permutation_test,
-    "test_func_kwargs": {
+TEST_STATS_FUNC = permutation_test
+TEST_STATS_KWARGS = (
+    {
         "method": "approximate",
         "num_rounds": 10000,
         "func": "mean",
-        "paired": False,
-    },
-}
-MEDIAN_STATS_CONFIG = {
-    "test_func": permutation_test,
-    "test_func_kwargs": {
-        "method": "approximate",
-        "num_rounds": 10000,
-        "func": "median",
-        "paired": False,
-    },
-}
-STD_STATS_CONFIG = {
-    "test_func": permutation_test,
-    "test_func_kwargs": {
-        "method": "approximate",
-        "num_rounds": 10000,
-        "func": "std",
         "paired": False,  # TODO: Check that when needed uses paired test
     },
-}
+)
 
 
 # PLOTS
 INDIVIDUAL_VARIABLES_TO_PLOT = [
     "normed_distance_to_origin",
+    "angular_position_degrees",
     "speed",
     "normal_acceleration",
+    "distance_travelled",
 ]
 INDIVIDUAL_VARIABLES_STATS_TO_PLOT = [
+    ("normed_distance_to_origin", "frames_in_periphery"),
     ("normed_distance_to_origin", "median"),
     ("normed_distance_to_origin", "mean"),
     ("normed_distance_to_origin", "std"),
-    # ("angular_position", "circmean"), # TODO: Plot these ones after standarization
-    # ("angular_position", "circstd"),
+    ("angular_position_degrees", "circmean_degrees"),
+    ("angular_position_degrees", "circstd_degrees"),
+    ("speed", "frames_moving"),
     ("speed", "median"),
     ("speed", "mean"),
     ("speed", "std"),
     ("normal_acceleration", "median"),
     ("normal_acceleration", "mean"),
     ("normal_acceleration", "std"),
+    ("distance_travelled", "amax"),
 ]
 
 GROUP_VARIABLES_TO_PLOT = [
@@ -429,11 +445,11 @@ GROUP_VARIABLES_STATS_TO_PLOT = [
     ("rotation_order_parameter", "std"),
 ]
 
-INDIVIDUAL_NB_VARIABLES_TO_PLOT = ["nb_angle", "nb_distance"]
+INDIVIDUAL_NB_VARIABLES_TO_PLOT = ["nb_angle_degrees", "nb_distance"]
 INDIVIDUAL_NB_VARIALBES_STATS_TO_PLOT = [
-    # ("nb_angle", "circmean"), # TODO: Plot these ones after standarization
-    # ("nb_angle", "circstd"),
-    ("nb_angle", "ratio_in_front"),
+    ("nb_angle_degrees", "circmean_degrees"),
+    ("nb_angle_degrees", "circstd_degrees"),
+    ("nb_angle_degrees", "ratio_in_front"),
     ("nb_distance", "median"),
     ("nb_distance", "mean"),
     ("nb_distance", "std"),
@@ -457,7 +473,6 @@ DATA_FILTERS = {
     "no_WT": [lambda x: ~x["genotype_group"].str.contains("WT")],
 }
 
-## BOXPLOT KWARGS
 INDIV_BOXPLOT_KWARGS = {
     "x": "genotype_group_genotype",
     "palette": COLORS,
